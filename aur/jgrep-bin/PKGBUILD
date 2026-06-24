@@ -1,0 +1,35 @@
+# Maintainer: Tino Gohl <tuvbunn2@googlemail.com>
+pkgname=jgrep-bin
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="grep for JSON — filter and search JSON files using jq expressions (pre-built binary)"
+arch=('x86_64')
+url="https://github.com/subnix-work/jgrep"
+license=('Apache-2.0')
+provides=('jgrep')
+conflicts=('jgrep')
+source=("jgrep-linux-amd64::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep-linux-amd64")
+sha256sums=('2b837c85476dd4a77dd98ca06a8212fec92056881e90552734cea58e500c544d')
+
+package() {
+    install -Dm755 "${srcdir}/jgrep-linux-amd64" "${pkgdir}/usr/bin/jgrep"
+
+    # Fetch license from source tarball would require extra source entry;
+    # install inline instead
+    install -dm755 "${pkgdir}/usr/share/licenses/${pkgname}"
+    cat > "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" <<'EOF'
+Copyright 2026 Tino Gohl
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+EOF
+}

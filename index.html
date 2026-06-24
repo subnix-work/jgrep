@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jgrep — grep for JSON</title>
+  <style>
+    :root {
+      --accent:  #22d3ee;
+      --accent2: #818cf8;
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3a;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --green:   #22c55e;
+      --red:     #ef4444;
+      --yellow:  #eab308;
+      --orange:  #f97316;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Hero ── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3.5rem 2rem 2.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, #22d3ee18 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo {
+      font-size: 3.2rem;
+      font-weight: 800;
+      letter-spacing: -2px;
+      font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+    }
+    .logo .j  { color: var(--accent); }
+    .logo .gr { color: var(--text); }
+    .logo .ep { color: var(--accent2); }
+    header .tagline {
+      color: var(--muted);
+      margin-top: .6rem;
+      font-size: 1.1rem;
+    }
+    .header-badges {
+      display: flex;
+      gap: .5rem;
+      justify-content: center;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .hbadge {
+      padding: .25rem .75rem;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .hbadge.cyan   { border-color: var(--accent);  color: var(--accent);  background: #22d3ee10; }
+    .hbadge.indigo { border-color: var(--accent2); color: var(--accent2); background: #818cf810; }
+    .hbadge.green  { border-color: var(--green);   color: var(--green);   background: #22c55e10; }
+    .hbadge.orange { border-color: var(--orange);  color: var(--orange);  background: #f9731610; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: .25rem;
+      padding: .5rem 1rem;
+      overflow-x: auto;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .85rem;
+      padding: .35rem .75rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      transition: background .15s, color .15s;
+    }
+    nav a:hover { background: var(--border); color: var(--text); }
+
+    /* ── Layout ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+    section { margin-bottom: 3.5rem; scroll-margin-top: 3.5rem; }
+    section h2 {
+      font-size: 1.35rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: .5rem;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    section h2 .icon { font-size: 1.2rem; }
+
+    /* ── Quick install box ── */
+    .install-box {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .install-box span { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+    .install-box code {
+      font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+      color: var(--accent);
+      font-size: .95rem;
+      flex: 1;
+    }
+
+    /* ── What is jgrep ── */
+    .intro-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .intro-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    .intro-card h3 {
+      font-size: .85rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+    .intro-card p { font-size: .92rem; color: var(--text); }
+    .intro-card p + p { margin-top: .4rem; }
+
+    /* ── Code blocks ── */
+    .example {
+      margin-bottom: 1.75rem;
+    }
+    .example-label {
+      font-size: .82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+    .example-label .tag {
+      display: inline-block;
+      padding: .1rem .5rem;
+      border-radius: 4px;
+      font-size: .72rem;
+      margin-left: .4rem;
+      font-weight: 700;
+    }
+    .tag.basic   { background: #0f2e1a; color: var(--green); }
+    .tag.filter  { background: #1a1430; color: var(--accent2); }
+    .tag.advanced{ background: #1e1800; color: var(--yellow); }
+    .tag.flags   { background: #1e100a; color: var(--orange); }
+
+    .code-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+    .code-pane { }
+    .code-pane .pane-label {
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding: .35rem .75rem;
+      background: #13151f;
+      border: 1px solid var(--border);
+      border-radius: 6px 6px 0 0;
+      border-bottom: none;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .code-pane .pane-label.input  { color: var(--accent); }
+    .code-pane .pane-label.output { color: var(--green); }
+    .code-pane .pane-label.cmd    { color: var(--accent2); }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0 0 6px 6px;
+      padding: 1rem;
+      font-size: .8rem;
+      overflow-x: auto;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .single-pre pre {
+      border-radius: 6px;
+    }
+    code { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }
+
+    /* syntax highlight helpers */
+    .hl-cmd    { color: #e2e8f0; }
+    .hl-pipe   { color: var(--muted); }
+    .hl-flag   { color: var(--orange); }
+    .hl-filter { color: var(--accent2); }
+    .hl-str    { color: #86efac; }
+    .hl-num    { color: #fb923c; }
+    .hl-key    { color: var(--accent); }
+    .hl-bool   { color: var(--yellow); }
+    .hl-null   { color: var(--red); }
+    .hl-com    { color: #475569; font-style: italic; }
+    .hl-out    { color: var(--green); }
+    .hl-err    { color: var(--red); }
+
+    /* ── Options table ── */
+    .opts-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: .85rem;
+    }
+    .opts-table th {
+      background: #13151f;
+      color: var(--muted);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: .65rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .opts-table td {
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .opts-table tr:last-child td { border-bottom: none; }
+    .opts-table tr:hover td { background: #1e2130; }
+    .opts-table td code {
+      color: var(--accent2);
+      background: #13151f;
+      padding: .1rem .4rem;
+      border-radius: 4px;
+      font-size: .8rem;
+    }
+    .opts-table td:last-child { color: var(--muted); }
+
+    /* ── Exit codes ── */
+    .exit-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: .5rem 1.5rem;
+      align-items: start;
+    }
+    .exit-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+      padding: .1rem .5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .exit-code.zero  { background: #14532d; color: var(--green); }
+    .exit-code.one   { background: #422006; color: var(--yellow); }
+    .exit-code.two   { background: #450a0a; color: var(--red); }
+    .exit-desc { font-size: .9rem; color: var(--muted); padding-top: .1rem; }
+
+    /* ── vs grep comparison ── */
+    .vs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .vs-col h3 {
+      font-size: .82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: .4rem .75rem;
+      border-radius: 6px 6px 0 0;
+    }
+    .vs-col.grep h3 { background: #1e1800; color: var(--yellow); }
+    .vs-col.jgrep h3 { background: #0f1e2f; color: var(--accent); }
+
+    /* ── Cheatsheet grid ── */
+    .cheat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+    .cheat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .cheat-card .cheat-head {
+      padding: .4rem .85rem;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: #13151f;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .cheat-card pre {
+      border-radius: 0;
+      border: none;
+      font-size: .77rem;
+    }
+
+    @media (max-width: 900px) {
+      .code-pair, .intro-grid, .vs-grid, .cheat-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .logo { font-size: 2.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="j">j</span><span class="gr">gr</span><span class="ep">ep</span>
+  </div>
+  <p class="tagline">grep for JSON &mdash; filter with jq syntax, pipe like a pro</p>
+  <div class="header-badges">
+    <span class="hbadge cyan">jq 1.6 syntax</span>
+    <span class="hbadge indigo">stdin / files / dirs</span>
+    <span class="hbadge green">native binary</span>
+    <span class="hbadge orange">Quarkus · Jackson</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#what">What is jgrep?</a>
+  <a href="#install">Usage</a>
+  <a href="#basics">Basics</a>
+  <a href="#filter">Filtering</a>
+  <a href="#arrays">Arrays</a>
+  <a href="#nested">Nested</a>
+  <a href="#flags">Flags</a>
+  <a href="#multifile">Multi-File</a>
+  <a href="#advanced">Advanced</a>
+  <a href="#cheatsheet">Cheatsheet</a>
+  <a href="#exit">Exit Codes</a>
+</nav>
+
+<main>
+
+  <!-- ══════════════════════════════════════════════════════ WHAT IS JGREP -->
+  <section id="what">
+    <h2><span class="icon">🔍</span> What is jgrep?</h2>
+
+    <div class="intro-grid">
+      <div class="intro-card">
+        <h3>The Concept</h3>
+        <p><strong>jgrep</strong> is grep for JSON data. Instead of fumbling with raw text patterns, you use <strong>jq filters</strong> to precisely query fields, filter objects, and search arrays.</p>
+        <p>Perfect for log analysis, API responses, config files — anything that speaks JSON.</p>
+      </div>
+      <div class="intro-card">
+        <h3>How it works</h3>
+        <p>jgrep reads JSON from <strong>stdin</strong> or <strong>files / directories</strong>, applies your jq filter, and outputs only the matches — one match per line.</p>
+        <p>Also supports <strong>Newline-delimited JSON</strong> (NDJSON): multiple JSON objects per file, one per line.</p>
+      </div>
+      <div class="intro-card">
+        <h3>Why not just jq?</h3>
+        <p>jq transforms — jgrep <em>greps</em>. Exit code <code>0</code> = match found, exit code <code>1</code> = no match, just like you'd expect from grep.</p>
+        <p>Add flags like <code>-l</code> (filenames only), <code>-c</code> (count), and <code>-r</code> (recursive) — your grep muscle memory works here.</p>
+      </div>
+      <div class="intro-card">
+        <h3>One liner</h3>
+        <p><code>cat logs.json | jgrep '.[] | select(.level == "ERROR")'</code></p>
+        <p>That's it. All error entries from your JSON log — no AWK workarounds, no grepping raw JSON text.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ INSTALL -->
+  <section id="install">
+    <h2><span class="icon">⚡</span> Usage</h2>
+
+    <div class="install-box">
+      <span>Syntax:</span>
+      <code>jgrep [OPTIONS] FILTER [FILE...]</code>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Invocation <span class="tag basic">basic</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Read from stdin</span>
+<span class="hl-cmd">cat data.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.name'</span>
+
+<span class="hl-com"># Pass a file directly</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-filter">'.name'</span> data.json
+
+<span class="hl-com"># Multiple files</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-filter">'.status'</span> *.json
+
+<span class="hl-com"># Recursively search a directory</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-flag">-r</span> <span class="hl-filter">'.name'</span> ./logs/</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ BASICS -->
+  <section id="basics">
+    <h2><span class="icon">📝</span> Basics — Reading Fields</h2>
+
+    <p style="color:var(--muted);margin-bottom:1.25rem;font-size:.92rem;">
+      All examples use <code>example.json</code>:
+    </p>
+
+    <div class="example single-pre">
+      <div class="example-label">example.json</div>
+      <pre><code>[
+  { <span class="hl-key">"id"</span>: <span class="hl-num">1</span>, <span class="hl-key">"name"</span>: <span class="hl-str">"Alice"</span>, <span class="hl-key">"age"</span>: <span class="hl-num">30</span>, <span class="hl-key">"city"</span>: <span class="hl-str">"Berlin"</span>, <span class="hl-key">"active"</span>: <span class="hl-bool">true</span>,  <span class="hl-key">"tags"</span>: [<span class="hl-str">"developer"</span>, <span class="hl-str">"java"</span>] },
+  { <span class="hl-key">"id"</span>: <span class="hl-num">2</span>, <span class="hl-key">"name"</span>: <span class="hl-str">"Bob"</span>,   <span class="hl-key">"age"</span>: <span class="hl-num">25</span>, <span class="hl-key">"city"</span>: <span class="hl-str">"Hamburg"</span>, <span class="hl-key">"active"</span>: <span class="hl-bool">false</span>, <span class="hl-key">"tags"</span>: [<span class="hl-str">"designer"</span>, <span class="hl-str">"css"</span>] },
+  { <span class="hl-key">"id"</span>: <span class="hl-num">3</span>, <span class="hl-key">"name"</span>: <span class="hl-str">"Clara"</span>, <span class="hl-key">"age"</span>: <span class="hl-num">35</span>, <span class="hl-key">"city"</span>: <span class="hl-str">"Berlin"</span>, <span class="hl-key">"active"</span>: <span class="hl-bool">true</span>,  <span class="hl-key">"tags"</span>: [<span class="hl-str">"developer"</span>, <span class="hl-str">"python"</span>] }
+]</code></pre>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Print all names <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[].name'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">Alice
+Bob
+Clara</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Print all IDs <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[].id'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">1
+2
+3</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Print all cities <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[].city'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">Berlin
+Hamburg
+Berlin</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Iterate the full array (whole objects) <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[]'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice","age":30,"city":"Berlin","active":true,"tags":["developer","java"]}
+{"id":2,"name":"Bob","age":25,"city":"Hamburg","active":false,"tags":["designer","css"]}
+{"id":3,"name":"Clara","age":35,"city":"Berlin","active":true,"tags":["developer","python"]}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Pretty-print output <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--pretty</span> <span class="hl-filter">'.[]'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{
+  "id": 1,
+  "name": "Alice",
+  ...
+}</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ FILTER -->
+  <section id="filter">
+    <h2><span class="icon">🎯</span> Filtering with select()</h2>
+
+    <p style="color:var(--muted);margin-bottom:1.25rem;font-size:.92rem;">
+      <code>select(CONDITION)</code> returns only the objects for which the condition is true. That's the core of jgrep.
+    </p>
+
+    <div class="example">
+      <div class="example-label">Only entries from Berlin <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...,"city":"Berlin",...}
+{"id":3,"name":"Clara",...,"city":"Berlin",...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Only active users <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.active == true)'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...,"active":true,...}
+{"id":3,"name":"Clara",...,"active":true,...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Only inactive users <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.active == false)'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":2,"name":"Bob",...,"active":false,...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Numeric comparison: age &gt; 28 <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.age > 28)'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice","age":30,...}
+{"id":3,"name":"Clara","age":35,...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Age in a range: 25–30 <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.age >= 25 and .age <= 30)'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice","age":30,...}
+{"id":2,"name":"Bob","age":25,...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">OR condition: Berlin or Hamburg <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin" or .city == "Hamburg")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,...,"city":"Berlin",...}
+{"id":2,...,"city":"Hamburg",...}
+{"id":3,...,"city":"Berlin",...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Only the name of matched objects <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin") | .name'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">Alice
+Clara</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ ARRAYS -->
+  <section id="arrays">
+    <h2><span class="icon">📋</span> Searching Arrays</h2>
+
+    <div class="example">
+      <div class="example-label">Filter by a tag value <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.tags[] == "developer")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...,"tags":["developer","java"]}
+{"id":3,"name":"Clara",...,"tags":["developer","python"]}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">List all tags from all entries <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[].tags[]'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">developer
+java
+designer
+css
+developer
+python</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">First tag of each entry <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[].tags[0]'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">developer
+designer
+developer</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Using <code>contains</code>: tag array includes a value <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.tags | contains(["java"]))'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...,"tags":["developer","java"]}</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ NESTED -->
+  <section id="nested">
+    <h2><span class="icon">🌿</span> Nested Objects</h2>
+
+    <p style="color:var(--muted);margin-bottom:1.25rem;font-size:.92rem;">
+      Deeper JSON structures — like API responses or logs — are navigated with simple dot notation.
+    </p>
+
+    <div class="example single-pre">
+      <div class="example-label">Example structure (nested.json)</div>
+      <pre><code>[
+  {
+    <span class="hl-key">"user"</span>: { <span class="hl-key">"id"</span>: <span class="hl-num">1</span>, <span class="hl-key">"name"</span>: <span class="hl-str">"Alice"</span> },
+    <span class="hl-key">"address"</span>: { <span class="hl-key">"city"</span>: <span class="hl-str">"Berlin"</span>, <span class="hl-key">"zip"</span>: <span class="hl-str">"10115"</span> },
+    <span class="hl-key">"scores"</span>: [<span class="hl-num">95</span>, <span class="hl-num">87</span>, <span class="hl-num">92</span>]
+  },
+  {
+    <span class="hl-key">"user"</span>: { <span class="hl-key">"id"</span>: <span class="hl-num">2</span>, <span class="hl-key">"name"</span>: <span class="hl-str">"Bob"</span> },
+    <span class="hl-key">"address"</span>: { <span class="hl-key">"city"</span>: <span class="hl-str">"Hamburg"</span>, <span class="hl-key">"zip"</span>: <span class="hl-str">"20095"</span> },
+    <span class="hl-key">"scores"</span>: [<span class="hl-num">70</span>, <span class="hl-num">80</span>]
+  }
+]</code></pre>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Read a deeply nested field <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat nested.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[].user.name'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">Alice
+Bob</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Filter by city in a nested object <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat nested.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.address.city == "Berlin")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"user":{"id":1,"name":"Alice"},"address":{"city":"Berlin",...},...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Filter by a high score in an array <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat nested.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.scores[] > 90)'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"user":{"id":1,"name":"Alice"},...,"scores":[95,87,92]}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Only the user name from Berlin entries <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat nested.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.address.city == "Berlin") | .user.name'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">Alice</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ FLAGS -->
+  <section id="flags">
+    <h2><span class="icon">🚩</span> Flags &amp; Options</h2>
+
+    <table class="opts-table">
+      <thead>
+        <tr>
+          <th>Flag</th>
+          <th>Long form</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>-r</code></td>
+          <td><code>--recursive</code></td>
+          <td>Recurse into directories and search all <code>.json</code> files</td>
+        </tr>
+        <tr>
+          <td><code>-l</code></td>
+          <td><code>--files-with-matches</code></td>
+          <td>Only print filenames that contain matches</td>
+        </tr>
+        <tr>
+          <td><code>-c</code></td>
+          <td><code>--count</code></td>
+          <td>Print match count per file instead of the values</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><code>--pretty</code></td>
+          <td>Pretty-print JSON output with indentation</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><code>--no-color</code></td>
+          <td>Disable colored filename output</td>
+        </tr>
+        <tr>
+          <td><code>-h</code></td>
+          <td><code>--help</code></td>
+          <td>Show help message</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><code>--version</code></td>
+          <td>Print version number</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <br>
+
+    <div class="example">
+      <div class="example-label"><code>--pretty</code> — formatted output <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--pretty</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{
+  "id": 1,
+  "name": "Alice",
+  "age": 30,
+  "city": "Berlin",
+  "active": true,
+  "tags": ["developer","java"]
+}
+{
+  "id": 3,
+  ...</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label"><code>-c</code> — count matches <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-flag">-c</span> \
+  <span class="hl-filter">'.[] | select(.active == true)'</span> \
+  example.json</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">2</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label"><code>-l</code> — filenames only <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-flag">-l</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin")'</span> \
+  *.json</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">example.json</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label"><code>-r</code> — recursive directory search <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-flag">-r</span> \
+  <span class="hl-filter">'select(.level == "ERROR")'</span> \
+  ./logs/</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">logs/app-2024-01.json: {"level":"ERROR","msg":"..."}
+logs/app-2024-02.json: {"level":"ERROR","msg":"..."}</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ MULTIFILE -->
+  <section id="multifile">
+    <h2><span class="icon">📂</span> Multiple Files &amp; Pipelines</h2>
+
+    <div class="example">
+      <div class="example-label">Multiple files at once <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-filter">'.name'</span> users.json admins.json</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">users.json: Alice
+users.json: Bob
+admins.json: Root</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Inside a shell pipeline <span class="tag basic">basic</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Pipe an API response directly</span>
+<span class="hl-cmd">curl</span> <span class="hl-flag">-s</span> https://api.example.com/users <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[] | select(.role == "admin")'</span>
+
+<span class="hl-com"># Filter logs and count</span>
+<span class="hl-cmd">cat app.log.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'select(.level == "ERROR")'</span> <span class="hl-pipe">|</span> <span class="hl-cmd">wc -l</span>
+
+<span class="hl-com"># Combine with grep</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[] | .name'</span> users.json <span class="hl-pipe">|</span> <span class="hl-cmd">grep</span> <span class="hl-str">"Ali"</span>
+
+<span class="hl-com"># Write results to a file</span>
+<span class="hl-cmd">cat events.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-filter">'select(.type == "click")'</span> <span class="hl-pipe">&gt;</span> clicks.json</code></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">NDJSON — one JSON object per line <span class="tag basic">basic</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label input">logs.ndjson</div>
+          <pre><code>{"level":"INFO","msg":"started"}
+{"level":"ERROR","msg":"connection refused"}
+{"level":"INFO","msg":"retrying"}
+{"level":"ERROR","msg":"timeout"}</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label cmd">Command + Output</div>
+          <pre><code><span class="hl-cmd">cat logs.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'select(.level == "ERROR")'</span>
+
+<span class="hl-out">{"level":"ERROR","msg":"connection refused"}
+{"level":"ERROR","msg":"timeout"}</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ ADVANCED -->
+  <section id="advanced">
+    <h2><span class="icon">🧠</span> Advanced Filters</h2>
+
+    <div class="example">
+      <div class="example-label">Regex: names starting with A <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.name | test("^A"))'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Regex: names containing "a" (case-insensitive) <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.name | test("[Aa]"; "i"))'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"id":1,"name":"Alice",...}
+{"id":3,"name":"Clara",...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">has() — check if a field exists <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(has("tags"))'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output (all entries that have a "tags" field)</div>
+          <pre><code><span class="hl-out">{"id":1,...}
+{"id":2,...}
+{"id":3,...}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Project specific fields only <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | {name: .name, city: .city}'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"name":"Alice","city":"Berlin"}
+{"name":"Bob","city":"Hamburg"}
+{"name":"Clara","city":"Berlin"}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Combined: Berlin developers with field projection <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select(.city == "Berlin" and (.tags[] == "developer")) | {name: .name, age: .age}'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"name":"Alice","age":30}
+{"name":"Clara","age":35}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">length — filter by array size <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | select((.tags | length) > 1) | .name'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output (people with more than one tag)</div>
+          <pre><code><span class="hl-out">Alice
+Bob
+Clara</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">type — filter by value type <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-com"># Only output fields whose value is a number</span>
+<span class="hl-cmd">cat example.json</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'.[] | .age | select(type == "number")'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">30
+25
+35</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ CHEATSHEET -->
+  <section id="cheatsheet">
+    <h2><span class="icon">📖</span> Cheatsheet</h2>
+
+    <div class="cheat-grid">
+      <div class="cheat-card">
+        <div class="cheat-head">Fields</div>
+        <pre><code><span class="hl-filter">.name</span>              <span class="hl-com"># read a field</span>
+<span class="hl-filter">.user.name</span>         <span class="hl-com"># nested field</span>
+<span class="hl-filter">.tags[0]</span>           <span class="hl-com"># array index</span>
+<span class="hl-filter">.tags[-1]</span>          <span class="hl-com"># last element</span>
+<span class="hl-filter">.[]</span>                <span class="hl-com"># iterate all values</span>
+<span class="hl-filter">.tags[]</span>            <span class="hl-com"># all array elements</span></code></pre>
+      </div>
+      <div class="cheat-card">
+        <div class="cheat-head">select() — Conditions</div>
+        <pre><code><span class="hl-filter">select(.x == "val")</span>       <span class="hl-com"># equal</span>
+<span class="hl-filter">select(.x != "val")</span>       <span class="hl-com"># not equal</span>
+<span class="hl-filter">select(.n > 10)</span>           <span class="hl-com"># greater than</span>
+<span class="hl-filter">select(.n >= 10)</span>          <span class="hl-com"># greater or equal</span>
+<span class="hl-filter">select(.a and .b)</span>         <span class="hl-com"># AND</span>
+<span class="hl-filter">select(.a or .b)</span>          <span class="hl-com"># OR</span>
+<span class="hl-filter">select(.a | not)</span>          <span class="hl-com"># NOT</span></code></pre>
+      </div>
+      <div class="cheat-card">
+        <div class="cheat-head">String Functions</div>
+        <pre><code><span class="hl-filter">select(.s | test("regex"))</span>     <span class="hl-com"># regex match</span>
+<span class="hl-filter">select(.s | startswith("A"))</span>   <span class="hl-com"># prefix</span>
+<span class="hl-filter">select(.s | endswith("z"))</span>     <span class="hl-com"># suffix</span>
+<span class="hl-filter">select(.s | contains("sub"))</span>   <span class="hl-com"># substring</span>
+<span class="hl-filter">.name | ascii_downcase</span>         <span class="hl-com"># lowercase</span>
+<span class="hl-filter">.name | ltrimstr("Mr.")</span>        <span class="hl-com"># trim prefix</span></code></pre>
+      </div>
+      <div class="cheat-card">
+        <div class="cheat-head">Array Functions</div>
+        <pre><code><span class="hl-filter">select(.arr | length > 2)</span>          <span class="hl-com"># length</span>
+<span class="hl-filter">select(.arr[] == "x")</span>              <span class="hl-com"># find element</span>
+<span class="hl-filter">select(.arr | contains(["x"]))</span>    <span class="hl-com"># contains</span>
+<span class="hl-filter">select(.arr | any(. > 5))</span>         <span class="hl-com"># at least one</span>
+<span class="hl-filter">select(.arr | all(. > 0))</span>         <span class="hl-com"># all match</span>
+<span class="hl-filter">.arr | first</span>                       <span class="hl-com"># first element</span></code></pre>
+      </div>
+      <div class="cheat-card">
+        <div class="cheat-head">Pipes &amp; Projection</div>
+        <pre><code><span class="hl-filter">.[] | select(.x) | .y</span>     <span class="hl-com"># filter + project</span>
+<span class="hl-filter">{name: .name, id: .id}</span>    <span class="hl-com"># build new object</span>
+<span class="hl-filter">[.[] | .name]</span>             <span class="hl-com"># array of names</span>
+<span class="hl-filter">.[] | .x, .y</span>             <span class="hl-com"># multiple fields</span></code></pre>
+      </div>
+      <div class="cheat-card">
+        <div class="cheat-head">Flags</div>
+        <pre><code><span class="hl-flag">-r</span>         <span class="hl-com"># recursive (directory)</span>
+<span class="hl-flag">-l</span>         <span class="hl-com"># filenames with matches only</span>
+<span class="hl-flag">-c</span>         <span class="hl-com"># count matches</span>
+<span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
+<span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ EXIT CODES -->
+  <section id="exit">
+    <h2><span class="icon">🔢</span> Exit Codes</h2>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;">
+      <div class="exit-grid">
+        <div class="exit-code zero">0</div>
+        <div class="exit-desc">At least one match found — just like grep</div>
+        <div class="exit-code one">1</div>
+        <div class="exit-desc">No match — filter returned nothing</div>
+        <div class="exit-code two">2</div>
+        <div class="exit-desc">Error — invalid filter or JSON parse failure</div>
+      </div>
+
+      <div style="margin-top:1.25rem;" class="single-pre">
+        <pre><code><span class="hl-com"># Use in shell scripts</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[] | select(.active == true)'</span> users.json
+<span class="hl-cmd">if</span> [ $? <span class="hl-filter">-eq</span> <span class="hl-num">0</span> ]; <span class="hl-cmd">then</span>
+  <span class="hl-cmd">echo</span> <span class="hl-str">"Active users found"</span>
+<span class="hl-cmd">else</span>
+  <span class="hl-cmd">echo</span> <span class="hl-str">"No active users"</span>
+<span class="hl-cmd">fi</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
