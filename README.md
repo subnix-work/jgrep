@@ -35,14 +35,16 @@ Download the native binary for your platform from the [Releases](https://github.
 git clone https://github.com/subnix-work/jgrep.git
 cd jgrep/jgrep
 
-# JVM build (requires Java 21+)
+# JVM build (requires Java 25+)
 ./mvnw package
 java -jar target/quarkus-app/quarkus-run.jar '.name' file.json
 
-# Native binary via Docker (no GraalVM needed locally)
+# Native Linux binary via Docker (no GraalVM needed locally)
 ./mvnw package -Pnative -Dquarkus.native.container-build=true
 ./target/jgrep-1.1.0-runner '.name' file.json
 ```
+
+Docker native builds produce Linux executables. Use the GitHub release assets for macOS binaries, or build natively on macOS with GraalVM installed.
 
 ## Usage
 
@@ -177,8 +179,8 @@ jgrep uses full [jq 1.6](https://jqlang.github.io/jq/manual/) syntax. Supports N
 
 - [Quarkus](https://quarkus.io/) + [Picocli](https://picocli.info/) — CLI framework
 - [jackson-jq](https://github.com/eiiches/jackson-jq) — jq implementation in Java
-- GraalVM Native Image via Docker — single binary, no JVM needed, ~8ms startup
+- GraalVM Native Image — single binary, no JVM needed, ~8ms startup
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache-2.0](LICENSE)

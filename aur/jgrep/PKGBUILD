@@ -2,7 +2,7 @@
 pkgname=jgrep
 pkgver=1.1.0
 pkgrel=1
-pkgdesc="grep for JSON — filter and search JSON files using jq expressions"
+pkgdesc="grep for JSON and YAML — filter structured files using jq expressions"
 arch=('x86_64')
 url="https://github.com/subnix-work/jgrep"
 license=('Apache-2.0')
@@ -26,6 +26,6 @@ build() {
 
 package() {
     cd "${srcdir}/jgrep-${pkgver}/jgrep"
-    install -Dm755 target/jgrep "${pkgdir}/usr/bin/jgrep"
+    install -Dm755 "target/jgrep-${pkgver}-runner" "${pkgdir}/usr/bin/jgrep"
     install -Dm644 ../LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

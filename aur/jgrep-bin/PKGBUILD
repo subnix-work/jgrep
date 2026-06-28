@@ -2,17 +2,17 @@
 pkgname=jgrep-bin
 pkgver=1.1.0
 pkgrel=1
-pkgdesc="grep for JSON — filter and search JSON files using jq expressions (pre-built binary)"
+pkgdesc="grep for JSON and YAML — filter structured files using jq expressions (pre-built binary)"
 arch=('x86_64')
 url="https://github.com/subnix-work/jgrep"
 license=('Apache-2.0')
 provides=('jgrep')
 conflicts=('jgrep')
-source=("jgrep-linux-amd64::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep-linux-amd64")
-sha256sums=('SKIP')
+source=("jgrep::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep")
+sha256sums=('2b837c85476dd4a77dd98ca06a8212fec92056881e90552734cea58e500c544d')
 
 package() {
-    install -Dm755 "${srcdir}/jgrep-linux-amd64" "${pkgdir}/usr/bin/jgrep"
+    install -Dm755 "${srcdir}/jgrep" "${pkgdir}/usr/bin/jgrep"
 
     # Fetch license from source tarball would require extra source entry;
     # install inline instead
