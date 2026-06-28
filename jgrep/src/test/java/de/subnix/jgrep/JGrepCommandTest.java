@@ -160,6 +160,40 @@ class JGrepCommandTest
     }
 
     @Test
+    void missingFileReturnsExitCode2(QuarkusMainLauncher launcher, @TempDir Path tempDir)
+    {
+        LaunchResult result = launcher.launch(".name", tempDir.resolve("missing.json").toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.getErrorOutput()).contains("missing.json");
+    }
+
+    @Test
+    void parseErrorReturnsExitCode2EvenAfterMatch(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("broken.ndjson");
+        Files.writeString(file, """
+                {"name": "Alice"}
+                {"name":
+                """);
+
+        LaunchResult result = launcher.launch(".name", file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.getOutput()).contains("Alice");
+        assertThat(result.getErrorOutput()).contains("parse error");
+    }
+
+    @Test
+    void directoryWithoutRecursiveReturnsExitCode2(QuarkusMainLauncher launcher, @TempDir Path tempDir)
+    {
+        LaunchResult result = launcher.launch(".name", tempDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.getErrorOutput()).contains("Is a directory");
+    }
+
+    @Test
     void helpShowsRootAndCompletionSynopsis(QuarkusMainLauncher launcher)
     {
         LaunchResult result = launcher.launch("--help");

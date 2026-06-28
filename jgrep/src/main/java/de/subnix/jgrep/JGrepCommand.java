@@ -92,6 +92,8 @@ public class JGrepCommand implements Callable<Integer>
     @Spec
     CommandSpec spec;
 
+    private boolean hadError;
+
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
     private static final String CYAN     = "\u001B[36m";
@@ -118,6 +120,8 @@ public class JGrepCommand implements Callable<Integer>
     @Override
     public Integer call()
     {
+        hadError = false;
+
         String filter = resolveFilter();
         if (filter == null) return 2;
 
@@ -163,6 +167,7 @@ public class JGrepCommand implements Callable<Integer>
                     catch (IOException e)
                     {
                         System.err.println("jgrep: " + file + ": " + e.getMessage());
+                        hadError = true;
                     }
                 }
             }
@@ -174,6 +179,7 @@ public class JGrepCommand implements Callable<Integer>
             printSlurpResult(slurpBuffer);
         }
 
+        if (hadError) return 2;
         return foundAnyMatch ? 0 : 1;
     }
 
@@ -228,11 +234,13 @@ public class JGrepCommand implements Callable<Integer>
                     catch (IOException e)
                     {
                         System.err.println("jgrep: " + path + ": " + e.getMessage());
+                        hadError = true;
                     }
                 }
                 else
                 {
                     System.err.println("jgrep: " + path + ": Is a directory");
+                    hadError = true;
                 }
             }
             else
@@ -253,6 +261,7 @@ public class JGrepCommand implements Callable<Integer>
         catch (JsonQueryException e)
         {
             System.err.println("jgrep: filter error: " + e.getMessage());
+            hadError = true;
             return false;
         }
 
@@ -300,6 +309,7 @@ public class JGrepCommand implements Callable<Integer>
                         : "";
                     System.err.println("jgrep: " + source(filename) + ": parse error" + location
                         + ": " + e.getOriginalMessage());
+                    hadError = true;
                     continue;
                 }
 
@@ -311,6 +321,7 @@ public class JGrepCommand implements Callable<Integer>
                 catch (JsonQueryException e)
                 {
                     System.err.println("jgrep: filter error: " + e.getMessage());
+                    hadError = true;
                     continue;
                 }
 
@@ -334,6 +345,7 @@ public class JGrepCommand implements Callable<Integer>
         catch (IOException e)
         {
             System.err.println("jgrep: " + source(filename) + ": " + e.getMessage());
+            hadError = true;
         }
 
         if (slurpBuffer == null)
@@ -376,7 +388,15 @@ public class JGrepCommand implements Callable<Integer>
         if (useColor() && !result.isTextual()) output = colorizeJson(output);
         if (showFilename && filename != null)
         {
-            System.out.println(colorizeByLevel(colorize(filename + ":", CYAN) + output, source));
+            String line = filename + ":" + output;
+            if (hasLevelColor(source))
+            {
+                System.out.println(colorizeByLevel(line, source));
+            }
+            else
+            {
+                System.out.println(colorize(filename + ":", CYAN) + output);
+            }
         }
         else
         {
@@ -466,6 +486,11 @@ public class JGrepCommand implements Callable<Integer>
 
         String color = colorForLevel(levelValue(source));
         return color != null ? color + text + RESET : text;
+    }
+
+    private boolean hasLevelColor(JsonNode source)
+    {
+        return useLevelColor() && colorForLevel(levelValue(source)) != null;
     }
 
     private boolean useLevelColor()
