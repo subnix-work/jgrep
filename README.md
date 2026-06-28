@@ -27,7 +27,7 @@ curl -s https://api.example.com/users | jgrep 'select(.role == "admin")'
 
 ## Installation
 
-Download the native binary for your platform from the [Releases](https://github.com/subnix-work/jgrep/releases) page — no JVM required.
+Download native binaries from the [Releases](https://github.com/subnix-work/jgrep/releases) page — no JVM required. Linux x64 is available as `jgrep`; macOS x64 and arm64 archives are produced for new version tags by the native build workflow.
 
 **Or build from source:**
 

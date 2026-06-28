@@ -53,6 +53,11 @@ public class CompletionCommand implements Callable<Integer>
                     return 0
                   fi
 
+                  if [[ "$COMP_CWORD" -eq 1 && "$cur" != -* ]]; then
+                    COMPREPLY=( $(compgen -W "completion" -- "$cur") $(compgen -f -- "$cur") )
+                    return 0
+                  fi
+
                   if [[ "$prev" == "--color-level-field" ]]; then
                     COMPREPLY=()
                     return 0

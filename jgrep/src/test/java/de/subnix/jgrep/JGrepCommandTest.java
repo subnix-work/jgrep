@@ -67,6 +67,15 @@ class JGrepCommandTest
     }
 
     @Test
+    void countAndFilesWithMatchesCannotBeCombined(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("-cl", ".");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.getErrorOutput()).contains("cannot be used together");
+    }
+
+    @Test
     void filesWithMatchesFlag(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
         Path matchFile = tempDir.resolve("match.json");
@@ -216,6 +225,7 @@ class JGrepCommandTest
         assertThat(result.getOutput()).contains("--yaml");
         assertThat(result.getOutput()).contains("--from-file");
         assertThat(result.getOutput()).contains("--color-level-field");
+        assertThat(result.getOutput()).contains("compgen -W \"completion\"");
     }
 
     @Test

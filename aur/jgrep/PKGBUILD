@@ -6,7 +6,7 @@ pkgdesc="grep for JSON and YAML — filter structured files using jq expressions
 arch=('x86_64')
 url="https://github.com/subnix-work/jgrep"
 license=('Apache-2.0')
-makedepends=('docker' 'maven')
+makedepends=('docker' 'maven' 'java-environment=25')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/subnix-work/jgrep/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('fb2eeb1c5087dce2e8060a451fff92f91aa4ee6819d68c31a809882988b56bff')
 

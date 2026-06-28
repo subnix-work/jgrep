@@ -124,6 +124,11 @@ public class JGrepCommand implements Callable<Integer>
 
         String filter = resolveFilter();
         if (filter == null) return 2;
+        if (countOnly && filesOnly)
+        {
+            System.err.println("jgrep: --count and --files-with-matches cannot be used together");
+            return 2;
+        }
 
         JsonQuery query;
         try
