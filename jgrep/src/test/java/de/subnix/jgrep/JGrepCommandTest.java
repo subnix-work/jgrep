@@ -160,6 +160,17 @@ class JGrepCommandTest
     }
 
     @Test
+    void helpShowsRootAndCompletionSynopsis(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("--help");
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("jgrep [OPTIONS] FILTER [FILE...]");
+        assertThat(result.getOutput()).contains("jgrep completion SHELL");
+        assertThat(result.getOutput()).doesNotContain("[FILTER] [FILE...] [COMMAND]");
+    }
+
+    @Test
     void completionGeneratesBashScript(QuarkusMainLauncher launcher)
     {
         LaunchResult result = launcher.launch("completion", "bash");

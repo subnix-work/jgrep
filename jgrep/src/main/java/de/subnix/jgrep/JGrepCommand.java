@@ -30,6 +30,10 @@ import java.util.stream.Stream;
     mixinStandardHelpOptions = true,
     version = "1.1.0",
     description = "grep for JSON and YAML using jq filters",
+    customSynopsis = {
+        "jgrep [OPTIONS] FILTER [FILE...]",
+        "jgrep completion SHELL"
+    },
     subcommands = CompletionCommand.class
 )
 @TopCommand
