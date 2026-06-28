@@ -370,18 +370,18 @@ class JGrepCommandTest
     }
 
     @Test
-    void parseErrorIsReportedButProcessingContinues(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    void parseErrorReportsMatchButReturnsExitCode2(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
         Path file = tempDir.resolve("mixed.json");
-        // First doc is valid; second is broken; overall run still exits 0 (matched first doc)
         Files.writeString(file, """
                 {"valid": true}
                 {invalid json}
                 """);
 
         LaunchResult result = launcher.launch(".", file.toString());
-        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.getOutput()).contains("true");
+        assertThat(result.getErrorOutput()).contains("parse error");
     }
 
     @Test

@@ -153,7 +153,7 @@ public class JGrepCommand implements Callable<Integer>
             List<Path> allFiles = resolveFiles();
             boolean showFilename = allFiles != null && allFiles.size() > 1;
 
-            if (allFiles == null || allFiles.isEmpty())
+            if (allFiles == null)
             {
                 foundAnyMatch = processStream(System.in, null, query, false, slurpBuffer, yaml);
             }
@@ -220,7 +220,7 @@ public class JGrepCommand implements Callable<Integer>
             inputPaths.add(Path.of(filterArg));
         }
         if (files != null) inputPaths.addAll(files);
-        if (inputPaths.isEmpty()) return inputPaths;
+        if (inputPaths.isEmpty()) return null;
 
         List<Path> result = new ArrayList<>();
         for (Path path : inputPaths)
