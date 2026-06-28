@@ -62,17 +62,28 @@ public class JGrepCommand implements Callable<Integer>
     @Option(names = {"--no-color"}, description = "Disable colored output")
     boolean noColor;
 
+    @Option(names = {"--color-level"},
+            description = "Color each output line by log level (default fields: log.level, level, severity)")
+    boolean colorLevel;
+
+    @Option(names = {"--color-level-field"}, paramLabel = "FIELD",
+            description = "Field used by --color-level")
+    String colorLevelField;
+
     @Inject
     ObjectMapper mapper;
 
     @Inject
     JsonMatcher matcher;
 
-    private static final String CYAN    = "\u001B[36m";
-    private static final String GREEN   = "\u001B[32m";
-    private static final String YELLOW  = "\u001B[33m";
-    private static final String MAGENTA = "\u001B[35m";
-    private static final String RESET   = "\u001B[0m";
+    private static final String CYAN     = "\u001B[36m";
+    private static final String GREEN    = "\u001B[32m";
+    private static final String BLUE     = "\u001B[34m";
+    private static final String YELLOW   = "\u001B[33m";
+    private static final String MAGENTA  = "\u001B[35m";
+    private static final String RED      = "\u001B[31m";
+    private static final String BOLD_RED = "\u001B[1;31m";
+    private static final String RESET    = "\u001B[0m";
 
     // Matches JSON keys, string values, numbers, and keywords for syntax highlighting
     private static final Pattern JSON_TOKEN_PATTERN = Pattern.compile(
@@ -80,6 +91,10 @@ public class JGrepCommand implements Callable<Integer>
         "|(?<str>\"(?:[^\"\\\\]|\\\\.)*\")" +
         "|(?<num>-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)" +
         "|(?<kw>true|false|null)"
+    );
+
+    private static final List<String> DEFAULT_LEVEL_FIELDS = List.of(
+            "log.level", "level", "severity", "severity_text", "severityText"
     );
 
     @Override
@@ -236,7 +251,7 @@ public class JGrepCommand implements Callable<Integer>
         {
             for (JsonNode result : results)
             {
-                printResult(null, false, result);
+                printResult(null, false, result, null);
             }
         }
         return true;
@@ -290,7 +305,7 @@ public class JGrepCommand implements Callable<Integer>
                     {
                         for (JsonNode result : results)
                         {
-                            printResult(filename, showFilename, result);
+                            printResult(filename, showFilename, result, node);
                         }
                     }
                 }
@@ -335,17 +350,17 @@ public class JGrepCommand implements Callable<Integer>
         }
     }
 
-    private void printResult(String filename, boolean showFilename, JsonNode result)
+    private void printResult(String filename, boolean showFilename, JsonNode result, JsonNode source)
     {
         String output = formatResult(result);
         if (useColor() && !result.isTextual()) output = colorizeJson(output);
         if (showFilename && filename != null)
         {
-            System.out.println(colorize(filename + ":", CYAN) + output);
+            System.out.println(colorizeByLevel(colorize(filename + ":", CYAN) + output, source));
         }
         else
         {
-            System.out.println(output);
+            System.out.println(colorizeByLevel(output, source));
         }
     }
 
@@ -410,5 +425,71 @@ public class JGrepCommand implements Callable<Integer>
     private String colorize(String text, String color)
     {
         return useColor() ? color + text + RESET : text;
+    }
+
+    private String colorizeByLevel(String text, JsonNode source)
+    {
+        if (!useLevelColor()) return text;
+
+        String color = colorForLevel(levelValue(source));
+        return color != null ? color + text + RESET : text;
+    }
+
+    private boolean useLevelColor()
+    {
+        if (!colorLevel) return false;
+        if (noColor) return false;
+        return System.getenv("NO_COLOR") == null;
+    }
+
+    private String levelValue(JsonNode source)
+    {
+        if (source == null) return null;
+
+        if (colorLevelField != null && !colorLevelField.isBlank())
+        {
+            JsonNode level = fieldValue(source, colorLevelField);
+            return level != null && level.isValueNode() ? level.asText() : null;
+        }
+
+        for (String field : DEFAULT_LEVEL_FIELDS)
+        {
+            JsonNode level = fieldValue(source, field);
+            if (level != null && level.isValueNode())
+            {
+                return level.asText();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode fieldValue(JsonNode node, String field)
+    {
+        JsonNode direct = node.get(field);
+        if (direct != null) return direct;
+
+        JsonNode current = node;
+        for (String part : field.split("\\."))
+        {
+            if (current == null || !current.isObject()) return null;
+            current = current.get(part);
+        }
+        return current;
+    }
+
+    static String colorForLevel(String level)
+    {
+        if (level == null) return null;
+
+        return switch (level.trim().toUpperCase())
+        {
+            case "TRACE" -> MAGENTA;
+            case "DEBUG" -> BLUE;
+            case "INFO", "INFORMATION", "NOTICE" -> CYAN;
+            case "WARN", "WARNING" -> YELLOW;
+            case "ERROR", "ERR" -> RED;
+            case "FATAL", "CRITICAL", "CRIT", "ALERT", "EMERGENCY" -> BOLD_RED;
+            default -> null;
+        };
     }
 }

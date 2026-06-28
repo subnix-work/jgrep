@@ -233,6 +233,29 @@
     .hl-com    { color: #475569; font-style: italic; }
     .hl-out    { color: var(--green); }
     .hl-err    { color: var(--red); }
+    .hl-warn   { color: var(--yellow); }
+    .hl-info   { color: var(--accent); }
+    .hl-debug  { color: var(--muted); }
+    .hl-trace  { color: #c084fc; }
+    .log-line {
+      display: block;
+      padding: .05rem .45rem;
+      border-left: 3px solid transparent;
+      white-space: pre;
+    }
+    .log-line.info  { color: #bae6fd; background: #0c4a6e33; border-left-color: #38bdf8; }
+    .log-line.warn  { color: #fef3c7; background: #713f1233; border-left-color: #facc15; }
+    .log-line.error { color: #fecaca; background: #7f1d1d33; border-left-color: #f87171; }
+    .log-line.debug { color: #cbd5e1; background: #33415533; border-left-color: #94a3b8; }
+    .note {
+      background: #0f1e2f;
+      border: 1px solid #1d4ed8;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: .9rem;
+      margin-bottom: 1.25rem;
+      padding: .9rem 1rem;
+    }
 
     /* ── Options table ── */
     .opts-table {
@@ -367,6 +390,7 @@
   <a href="#nested">Nested</a>
   <a href="#flags">Flags</a>
   <a href="#multifile">Multi-File</a>
+  <a href="#logs">K8s Logs</a>
   <a href="#advanced">Advanced</a>
   <a href="#v11">New in 1.1</a>
   <a href="#cheatsheet">Cheatsheet</a>
@@ -860,6 +884,16 @@ Bob</span></code></pre>
         </tr>
         <tr>
           <td></td>
+          <td><code>--color-level</code></td>
+          <td>Color each output line by log level (<code>log.level</code>, <code>level</code>, <code>severity</code>, ...)</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><code>--color-level-field FIELD</code></td>
+          <td>Use a custom field for <code>--color-level</code>, for example <code>app.level</code></td>
+        </tr>
+        <tr>
+          <td></td>
           <td><code>--no-color</code></td>
           <td>Disable syntax-highlighted output (also respects <code>$NO_COLOR</code>)</td>
         </tr>
@@ -1008,6 +1042,117 @@ admins.json: Root</span></code></pre>
 <span class="hl-out">{"level":"ERROR","msg":"connection refused"}
 {"level":"ERROR","msg":"timeout"}</span></code></pre>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ LOGS -->
+  <section id="logs">
+    <h2><span class="icon">🧾</span> Kubernetes / ECS Logs</h2>
+
+    <div class="note">
+      Kubernetes containers and AWS ECS often write one JSON object per line. jgrep reads that NDJSON directly, so you can filter by structured fields first and then project the match into a readable text line.
+    </div>
+
+    <div class="example">
+      <div class="example-label">ECS-style log input <span class="tag basic">ndjson</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-key">{"@timestamp"</span>:<span class="hl-str">"2026-06-28T08:15:30Z"</span>,<span class="hl-key">"log.level"</span>:<span class="hl-str">"INFO"</span>,<span class="hl-key">"message"</span>:<span class="hl-str">"payment accepted"</span>,<span class="hl-key">"service.name"</span>:<span class="hl-str">"checkout"</span>,<span class="hl-key">"kubernetes"</span>:{<span class="hl-key">"namespace"</span>:<span class="hl-str">"shop"</span>,<span class="hl-key">"pod"</span>:<span class="hl-str">"checkout-7b9"</span>},<span class="hl-key">"details"</span>:{<span class="hl-key">"order_id"</span>:<span class="hl-str">"A-1001"</span>,<span class="hl-key">"amount"</span>:<span class="hl-num">42.5</span>},<span class="hl-key">"additions"</span>:{<span class="hl-key">"tenant"</span>:<span class="hl-str">"eu"</span>},<span class="hl-key">"custom_tracker"</span>:{<span class="hl-key">"trace_id"</span>:<span class="hl-str">"tr-91"</span>}}
+<span class="hl-key">{"@timestamp"</span>:<span class="hl-str">"2026-06-28T08:16:02Z"</span>,<span class="hl-key">"log.level"</span>:<span class="hl-str">"WARN"</span>,<span class="hl-key">"message"</span>:<span class="hl-str">"slow downstream response"</span>,<span class="hl-key">"service.name"</span>:<span class="hl-str">"checkout"</span>,<span class="hl-key">"kubernetes"</span>:{<span class="hl-key">"namespace"</span>:<span class="hl-str">"shop"</span>,<span class="hl-key">"pod"</span>:<span class="hl-str">"checkout-7b9"</span>},<span class="hl-key">"details"</span>:{<span class="hl-key">"dependency"</span>:<span class="hl-str">"inventory"</span>,<span class="hl-key">"latency_ms"</span>:<span class="hl-num">850</span>},<span class="hl-key">"additions"</span>:{<span class="hl-key">"tenant"</span>:<span class="hl-str">"eu"</span>},<span class="hl-key">"custom_tracker"</span>:{<span class="hl-key">"trace_id"</span>:<span class="hl-str">"tr-92"</span>}}
+<span class="hl-key">{"@timestamp"</span>:<span class="hl-str">"2026-06-28T08:16:12Z"</span>,<span class="hl-key">"log.level"</span>:<span class="hl-str">"ERROR"</span>,<span class="hl-key">"message"</span>:<span class="hl-str">"payment declined"</span>,<span class="hl-key">"service.name"</span>:<span class="hl-str">"checkout"</span>,<span class="hl-key">"kubernetes"</span>:{<span class="hl-key">"namespace"</span>:<span class="hl-str">"shop"</span>,<span class="hl-key">"pod"</span>:<span class="hl-str">"checkout-7b9"</span>},<span class="hl-key">"details"</span>:{<span class="hl-key">"order_id"</span>:<span class="hl-str">"A-1002"</span>,<span class="hl-key">"reason"</span>:<span class="hl-str">"card_expired"</span>},<span class="hl-key">"additions"</span>:{<span class="hl-key">"tenant"</span>:<span class="hl-str">"eu"</span>},<span class="hl-key">"custom_tracker"</span>:{<span class="hl-key">"trace_id"</span>:<span class="hl-str">"tr-93"</span>}}</code></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">JSON to human-readable text <span class="tag advanced">text</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat ecs.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'"\(.["@timestamp"]) [\(.["log.level"])] \(.["service.name"])/\(.kubernetes.pod): \(.message)"'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output without JSON braces</div>
+          <pre><code><span class="hl-out">2026-06-28T08:15:30Z [INFO] checkout/checkout-7b9: payment accepted
+2026-06-28T08:16:02Z [WARN] checkout/checkout-7b9: slow downstream response
+2026-06-28T08:16:12Z [ERROR] checkout/checkout-7b9: payment declined</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Filter objects, then print text <span class="tag filter">filter</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat ecs.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'select(.["log.level"] == "ERROR" and .kubernetes.namespace == "shop") |
+   "\(.["@timestamp"]) ERROR \(.["service.name"]): \(.message) trace=\(.custom_tracker.trace_id)"'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-err">2026-06-28T08:16:12Z ERROR checkout: payment declined trace=tr-93</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Unpack details / additions / custom_tracker <span class="tag advanced">advanced</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat ecs.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> \
+  <span class="hl-filter">'select(.details.reason? or .details.latency_ms?) |
+   "\(.["@timestamp"]) [\(.["log.level"])] \(.message) tenant=\(.additions.tenant) trace=\(.custom_tracker.trace_id) details=\(.details)"'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-warn">2026-06-28T08:16:02Z [WARN] slow downstream response tenant=eu trace=tr-92 details={"dependency":"inventory","latency_ms":850}</span>
+<span class="hl-err">2026-06-28T08:16:12Z [ERROR] payment declined tenant=eu trace=tr-93 details={"order_id":"A-1002","reason":"card_expired"}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Color whole lines by log level <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat ecs.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--color-level</span> \
+  <span class="hl-filter">'"[\(.["log.level"])] \(.["@timestamp"]) \(.message) trace=\(.custom_tracker.trace_id)"'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Visual result</div>
+          <pre><code><span class="log-line info">[INFO]  2026-06-28T08:15:30Z payment accepted trace=tr-91</span>
+<span class="log-line warn">[WARN]  2026-06-28T08:16:02Z slow downstream response trace=tr-92</span>
+<span class="log-line error">[ERROR] 2026-06-28T08:16:12Z payment declined trace=tr-93</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Custom log level field <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">cat app.ndjson</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--color-level</span> \
+  <span class="hl-flag">--color-level-field</span> app.level \
+  <span class="hl-filter">'"[\(.app.level)] \(.message)"'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="log-line warn">[WARN] slow downstream response</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Kubernetes pod logs <span class="tag basic">pipeline</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Filter live logs from kubectl, keep only checkout errors, print readable lines</span>
+<span class="hl-cmd">kubectl logs</span> <span class="hl-flag">-n</span> shop deploy/checkout <span class="hl-flag">--since=10m</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--color-level</span> \
+  <span class="hl-filter">'select(.["log.level"] == "ERROR") |
+   "\(.["@timestamp"]) \(.kubernetes.pod // "-") \(.message) order=\(.details.order_id // "-")"'</span></code></pre>
       </div>
     </div>
   </section>
@@ -1268,6 +1413,7 @@ Clara</span></code></pre>
 <span class="hl-flag">-n</span>         <span class="hl-com"># null-input (no file needed)</span>
 <span class="hl-flag">-f FILE</span>    <span class="hl-com"># read filter from .jq file</span>
 <span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
+<span class="hl-flag">--color-level</span> <span class="hl-com"># color log lines by level</span>
 <span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span></code></pre>
       </div>
     </div>

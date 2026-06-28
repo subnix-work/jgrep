@@ -226,4 +226,85 @@ class JGrepCommandTest
         assertThat(result.exitCode()).isEqualTo(0);
         assertThat(result.getOutput()).contains("true");
     }
+
+    @Test
+    void colorLevelColorsProjectedLogLines(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("logs.ndjson");
+        Files.writeString(file, """
+                {"@timestamp":"2026-06-28T08:16:12Z","log.level":"ERROR","message":"payment declined"}
+                """);
+
+        LaunchResult result = launcher.launch("--color-level",
+                "\"[\\(.[" + quote("log.level") + "])] \\(.message)\"",
+                file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertColorOutput(result.getOutput(), "\u001B[31m[ERROR] payment declined\u001B[0m",
+                "[ERROR] payment declined");
+    }
+
+    @Test
+    void colorLevelCanUseCustomNestedField(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("logs.ndjson");
+        Files.writeString(file, """
+                {"app":{"level":"WARN"},"message":"slow downstream response"}
+                """);
+
+        LaunchResult result = launcher.launch("--color-level", "--color-level-field", "app.level",
+                "\"[\\(.app.level)] \\(.message)\"",
+                file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertColorOutput(result.getOutput(), "\u001B[33m[WARN] slow downstream response\u001B[0m",
+                "[WARN] slow downstream response");
+    }
+
+    @Test
+    void noColorDisablesLogLevelColor(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("logs.ndjson");
+        Files.writeString(file, """
+                {"level":"ERROR","message":"payment declined"}
+                """);
+
+        LaunchResult result = launcher.launch("--color-level", "--no-color",
+                "\"[\\(.level)] \\(.message)\"",
+                file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("[ERROR] payment declined");
+        assertThat(result.getOutput()).doesNotContain("\u001B[31m");
+    }
+
+    @Test
+    void logLevelColorsMapCommonLevels()
+    {
+        assertThat(JGrepCommand.colorForLevel("TRACE")).isEqualTo("\u001B[35m");
+        assertThat(JGrepCommand.colorForLevel("DEBUG")).isEqualTo("\u001B[34m");
+        assertThat(JGrepCommand.colorForLevel("INFO")).isEqualTo("\u001B[36m");
+        assertThat(JGrepCommand.colorForLevel("WARN")).isEqualTo("\u001B[33m");
+        assertThat(JGrepCommand.colorForLevel("ERROR")).isEqualTo("\u001B[31m");
+        assertThat(JGrepCommand.colorForLevel("FATAL")).isEqualTo("\u001B[1;31m");
+        assertThat(JGrepCommand.colorForLevel("UNKNOWN")).isNull();
+    }
+
+    private static void assertColorOutput(String output, String colored, String plain)
+    {
+        if (System.getenv("NO_COLOR") == null)
+        {
+            assertThat(output).contains(colored);
+        }
+        else
+        {
+            assertThat(output).contains(plain);
+            assertThat(output).doesNotContain("\u001B[");
+        }
+    }
+
+    private static String quote(String field)
+    {
+        return "\"" + field + "\"";
+    }
 }

@@ -47,7 +47,7 @@ java -jar target/quarkus-app/quarkus-run.jar '.name' file.json
 ## Usage
 
 ```
-Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--no-color] [FILTER] [FILE...]
+Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
 
   FILTER   jq filter expression (e.g. '.name', 'select(.age > 18)', '.items[]').
            Required unless -f is used.
@@ -61,6 +61,8 @@ Options:
   -n, --null-input           Use null as input (no file needed; evaluate filter directly)
   -f, --from-file=FILE       Read filter expression from a file
       --pretty               Pretty-print JSON output
+      --color-level          Color each output line by log level
+      --color-level-field    Field used by --color-level (e.g. app.level)
       --no-color             Disable colored output (also respects $NO_COLOR)
   -h, --help                 Show this help message
   -V, --version              Print version
@@ -101,6 +103,29 @@ jgrep -f filter.jq events.ndjson
 
 # Combine slurp + pretty-print
 jgrep -s --pretty 'select(.active)' users.ndjson
+```
+
+### Human-readable Kubernetes / ECS logs
+
+Kubernetes and ECS logs are often NDJSON: one JSON object per line. You can filter structured fields and then project each match into plain text:
+
+```bash
+# Turn JSON log events into readable text lines
+cat ecs.ndjson | jgrep \
+  '"\(.["@timestamp"]) [\(.["log.level"])] \(.["service.name"])/\(.kubernetes.pod): \(.message)"'
+
+# Filter specific objects, unpack nested tracking fields, and remove JSON braces
+cat ecs.ndjson | jgrep \
+  'select(.["log.level"] == "ERROR" and .kubernetes.namespace == "shop") |
+   "\(.["@timestamp"]) ERROR \(.["service.name"]): \(.message) trace=\(.custom_tracker.trace_id)"'
+
+# Color whole output lines by log level directly in jgrep
+cat ecs.ndjson | jgrep --color-level \
+  '"[\(.["log.level"])] \(.["@timestamp"]) \(.message) trace=\(.custom_tracker.trace_id)"'
+
+# Use a custom level field
+cat app.ndjson | jgrep --color-level --color-level-field app.level \
+  '"[\(.app.level)] \(.message)"'
 ```
 
 ## Filter syntax
