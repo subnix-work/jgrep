@@ -126,4 +126,104 @@ class JGrepCommandTest
         assertThat(result.getOutput()).contains("a.json");
         assertThat(result.getOutput()).contains("b.json");
     }
+
+    @Test
+    void slurpCollectsAllResultsIntoArray(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("test.json");
+        Files.writeString(file, """
+                {"v": 1}
+                {"v": 2}
+                {"v": 3}
+                """);
+
+        LaunchResult result = launcher.launch("-s", ".v", file.toString());
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput().trim()).isEqualTo("[1,2,3]");
+    }
+
+    @Test
+    void slurpAcrossMultipleFiles(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path a = tempDir.resolve("a.json");
+        Path b = tempDir.resolve("b.json");
+        Files.writeString(a, "{\"v\": 1}");
+        Files.writeString(b, "{\"v\": 2}");
+
+        LaunchResult result = launcher.launch("-s", ".v", a.toString(), b.toString());
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput().trim()).isEqualTo("[1,2]");
+    }
+
+    @Test
+    void slurpNoMatchReturnsEmptyArray(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("test.json");
+        Files.writeString(file, "{\"v\": 1}");
+
+        LaunchResult result = launcher.launch("-s", "select(.v > 99)", file.toString());
+        assertThat(result.exitCode()).isEqualTo(1);
+        assertThat(result.getOutput().trim()).isEqualTo("[]");
+    }
+
+    @Test
+    void nullInputRunsFilterWithoutFiles(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("-n", "1 + 1");
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput().trim()).isEqualTo("2");
+    }
+
+    @Test
+    void nullInputWithExpression(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("-n", "{a: 1, b: 2} | .a");
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput().trim()).isEqualTo("1");
+    }
+
+    @Test
+    void fromFileReadsFilterExpression(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path jsonFile = tempDir.resolve("data.json");
+        Path filterFile = tempDir.resolve("filter.jq");
+        Files.writeString(jsonFile, "{\"name\": \"Alice\", \"age\": 30}");
+        Files.writeString(filterFile, ".name");
+
+        LaunchResult result = launcher.launch("-f", filterFile.toString(), jsonFile.toString());
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("Alice");
+    }
+
+    @Test
+    void fromFileWithMultilineFilter(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path jsonFile = tempDir.resolve("data.json");
+        Path filterFile = tempDir.resolve("filter.jq");
+        Files.writeString(jsonFile, """
+                {"name": "Alice", "age": 30}
+                {"name": "Bob", "age": 15}
+                """);
+        Files.writeString(filterFile, "select(.age >= 18) | .name");
+
+        LaunchResult result = launcher.launch("-f", filterFile.toString(), jsonFile.toString());
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("Alice");
+        assertThat(result.getOutput()).doesNotContain("Bob");
+    }
+
+    @Test
+    void parseErrorIsReportedButProcessingContinues(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("mixed.json");
+        // First doc is valid; second is broken; overall run still exits 0 (matched first doc)
+        Files.writeString(file, """
+                {"valid": true}
+                {invalid json}
+                """);
+
+        LaunchResult result = launcher.launch(".", file.toString());
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("true");
+    }
 }

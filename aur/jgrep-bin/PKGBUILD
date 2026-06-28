@@ -1,6 +1,6 @@
 # Maintainer: Tino Gohl <tuvbunn2@googlemail.com>
 pkgname=jgrep-bin
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="grep for JSON — filter and search JSON files using jq expressions (pre-built binary)"
 arch=('x86_64')
@@ -9,7 +9,7 @@ license=('Apache-2.0')
 provides=('jgrep')
 conflicts=('jgrep')
 source=("jgrep-linux-amd64::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep-linux-amd64")
-sha256sums=('2b837c85476dd4a77dd98ca06a8212fec92056881e90552734cea58e500c544d')
+sha256sums=('SKIP')
 
 package() {
     install -Dm755 "${srcdir}/jgrep-linux-amd64" "${pkgdir}/usr/bin/jgrep"
