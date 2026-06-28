@@ -160,6 +160,60 @@ class JGrepCommandTest
     }
 
     @Test
+    void completionGeneratesBashScript(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("completion", "bash");
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("complete -F _jgrep_completion jgrep");
+        assertThat(result.getOutput()).contains("--yaml");
+        assertThat(result.getOutput()).contains("--from-file");
+        assertThat(result.getOutput()).contains("--color-level-field");
+    }
+
+    @Test
+    void completionGeneratesZshScript(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("completion", "zsh");
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("#compdef jgrep");
+        assertThat(result.getOutput()).contains("--yaml[Read input as YAML]");
+        assertThat(result.getOutput()).contains("--from-file");
+    }
+
+    @Test
+    void completionGeneratesFishScript(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("completion", "fish");
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("complete -c jgrep");
+        assertThat(result.getOutput()).contains("-l yaml");
+        assertThat(result.getOutput()).contains("-l from-file");
+    }
+
+    @Test
+    void completionGeneratesPowerShellScript(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("completion", "powershell");
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("Register-ArgumentCompleter");
+        assertThat(result.getOutput()).contains("--color-level");
+        assertThat(result.getOutput()).contains("--from-file");
+    }
+
+    @Test
+    void completionRejectsUnsupportedShell(QuarkusMainLauncher launcher)
+    {
+        LaunchResult result = launcher.launch("completion", "tcsh");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.getErrorOutput()).contains("unsupported shell");
+    }
+
+    @Test
     void multipleFilesShowFilename(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
         Path a = tempDir.resolve("a.json");

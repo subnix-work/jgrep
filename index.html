@@ -390,6 +390,7 @@
   <a href="#arrays">Arrays</a>
   <a href="#nested">Nested</a>
   <a href="#flags">Flags</a>
+  <a href="#completion">Completion</a>
   <a href="#multifile">Multi-File</a>
   <a href="#logs">K8s Logs</a>
   <a href="#advanced">Advanced</a>
@@ -993,6 +994,32 @@ logs/app-2024-02.json: {"level":"ERROR","msg":"..."}</span></code></pre>
     </div>
   </section>
 
+  <!-- ══════════════════════════════════════════════════════ COMPLETION -->
+  <section id="completion">
+    <h2><span class="icon">⌨️</span> Shell Completion</h2>
+
+    <div class="note">
+      jgrep can print completion scripts for common shells. Generate the script once, then load it from your shell's normal completion directory or profile.
+    </div>
+
+    <div class="example">
+      <div class="example-label">Generate completion scripts <span class="tag flags">subcommand</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Bash</span>
+<span class="hl-cmd">jgrep</span> completion bash <span class="hl-pipe">&gt;</span> ~/.local/share/bash-completion/completions/jgrep
+
+<span class="hl-com"># Zsh</span>
+<span class="hl-cmd">jgrep</span> completion zsh <span class="hl-pipe">&gt;</span> ~/.zsh/completions/_jgrep
+
+<span class="hl-com"># Fish</span>
+<span class="hl-cmd">jgrep</span> completion fish <span class="hl-pipe">&gt;</span> ~/.config/fish/completions/jgrep.fish
+
+<span class="hl-com"># PowerShell</span>
+<span class="hl-cmd">jgrep</span> completion powershell <span class="hl-pipe">&gt;&gt;</span> $PROFILE</code></pre>
+      </div>
+    </div>
+  </section>
+
   <!-- ══════════════════════════════════════════════════════ MULTIFILE -->
   <section id="multifile">
     <h2><span class="icon">📂</span> Multiple Files &amp; Pipelines</h2>
@@ -1455,7 +1482,8 @@ Clara</span></code></pre>
 <span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
 <span class="hl-flag">--yaml</span>     <span class="hl-com"># parse stdin as YAML</span>
 <span class="hl-flag">--color-level</span> <span class="hl-com"># color log lines by level</span>
-<span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span></code></pre>
+<span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span>
+<span class="hl-cmd">completion</span> <span class="hl-filter">bash</span> <span class="hl-com"># print shell completion</span></code></pre>
       </div>
     </div>
   </section>

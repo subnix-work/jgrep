@@ -67,6 +67,9 @@ Options:
       --no-color             Disable colored output (also respects $NO_COLOR)
   -h, --help                 Show this help message
   -V, --version              Print version
+
+Subcommands:
+  completion SHELL           Generate shell completion script
 ```
 
 ## Examples
@@ -110,6 +113,24 @@ jgrep '.service.name' deployment.yaml
 
 # Force YAML for stdin or non-yaml filenames
 cat deployment.yaml | jgrep --yaml '.spec.template.spec.containers[].image'
+```
+
+### Shell completion
+
+Generate completion scripts for common shells:
+
+```bash
+# Bash
+jgrep completion bash > ~/.local/share/bash-completion/completions/jgrep
+
+# Zsh
+jgrep completion zsh > ~/.zsh/completions/_jgrep
+
+# Fish
+jgrep completion fish > ~/.config/fish/completions/jgrep.fish
+
+# PowerShell
+jgrep completion powershell >> $PROFILE
 ```
 
 ### Human-readable Kubernetes / ECS logs

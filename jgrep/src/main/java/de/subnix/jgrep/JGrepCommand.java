@@ -6,11 +6,14 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.inject.Inject;
+import io.quarkus.picocli.runtime.annotations.TopCommand;
 import net.thisptr.jackson.jq.JsonQuery;
 import net.thisptr.jackson.jq.exception.JsonQueryException;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,8 +29,10 @@ import java.util.stream.Stream;
     name = "jgrep",
     mixinStandardHelpOptions = true,
     version = "1.1.0",
-    description = "grep for JSON using jq filters"
+    description = "grep for JSON and YAML using jq filters",
+    subcommands = CompletionCommand.class
 )
+@TopCommand
 public class JGrepCommand implements Callable<Integer>
 {
     @Parameters(index = "0", paramLabel = "FILTER", arity = "0..1",
@@ -35,7 +40,7 @@ public class JGrepCommand implements Callable<Integer>
     String filterArg;
 
     @Parameters(index = "1..*", paramLabel = "FILE",
-                description = "JSON files to search (reads from stdin if omitted)")
+                description = "JSON or YAML files to search (reads from stdin if omitted)")
     List<Path> files;
 
     @Option(names = {"-r", "--recursive"}, description = "Recurse into directories")
@@ -79,6 +84,9 @@ public class JGrepCommand implements Callable<Integer>
 
     @Inject
     JsonMatcher matcher;
+
+    @Spec
+    CommandSpec spec;
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
@@ -182,6 +190,7 @@ public class JGrepCommand implements Callable<Integer>
         if (filterArg == null)
         {
             System.err.println("jgrep: filter expression required (or use -f to read from file)");
+            spec.commandLine().usage(System.err);
             return null;
         }
         return filterArg;
