@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jvm:
+    name: JVM tests and package
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: jgrep
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: jgrep/pom.xml
+
+      - name: Verify
+        run: ./mvnw -B -ntp verify
+
+      - name: Upload JVM package
+        uses: actions/upload-artifact@v6
+        with:
+          name: jgrep-jvm-quarkus-app
+          path: jgrep/target/quarkus-app/**
+          if-no-files-found: error
