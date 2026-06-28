@@ -36,4 +36,4 @@
 ## 7. Distribution
 - [x] Native Binary gebaut: `target/jgrep-1.0.0-SNAPSHOT-runner` (44MB, 8ms Startup)
 - [x] GitHub Release v1.0.0 mit Binary: https://github.com/subnix-work/jgrep/releases/tag/v1.0.0
-- [x] LICENSE-Datei (MIT) angelegt
+- [x] LICENSE-Datei (Apache 2.0) angelegt

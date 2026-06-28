@@ -128,4 +128,4 @@ jgrep uses full [jq 1.6](https://jqlang.github.io/jq/manual/) syntax. Supports N
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)
