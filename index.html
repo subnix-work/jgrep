@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>jgrep — grep for JSON</title>
+  <title>jgrep — grep for JSON and YAML</title>
   <style>
     :root {
       --accent:  #22d3ee;
@@ -371,10 +371,11 @@
   <div class="logo">
     <span class="j">j</span><span class="gr">gr</span><span class="ep">ep</span>
   </div>
-  <p class="tagline">grep for JSON &mdash; filter with jq syntax, pipe like a pro</p>
+  <p class="tagline">grep for JSON and YAML &mdash; filter with jq syntax, pipe like a pro</p>
   <div class="header-badges">
     <span class="hbadge cyan">jq 1.6 syntax</span>
-    <span class="hbadge indigo">stdin / files / dirs</span>
+    <span class="hbadge indigo">JSON / YAML</span>
+    <span class="hbadge cyan">stdin / files / dirs</span>
     <span class="hbadge green">native binary</span>
     <span class="hbadge orange">Quarkus · Jackson</span>
     <span class="hbadge green">v1.1.0</span>
@@ -406,12 +407,12 @@
     <div class="intro-grid">
       <div class="intro-card">
         <h3>The Concept</h3>
-        <p><strong>jgrep</strong> is grep for JSON data. Instead of fumbling with raw text patterns, you use <strong>jq filters</strong> to precisely query fields, filter objects, and search arrays.</p>
-        <p>Perfect for log analysis, API responses, config files — anything that speaks JSON.</p>
+        <p><strong>jgrep</strong> is grep for JSON and YAML data. Instead of fumbling with raw text patterns, you use <strong>jq filters</strong> to precisely query fields, filter objects, and search arrays.</p>
+        <p>Perfect for log analysis, API responses, Kubernetes manifests, config files — anything structured.</p>
       </div>
       <div class="intro-card">
         <h3>How it works</h3>
-        <p>jgrep reads JSON from <strong>stdin</strong> or <strong>files / directories</strong>, applies your jq filter, and outputs only the matches — one match per line.</p>
+        <p>jgrep reads JSON or YAML from <strong>stdin</strong> or <strong>files / directories</strong>, applies your jq filter, and outputs only the matches — one match per line.</p>
         <p>Also supports <strong>Newline-delimited JSON</strong> (NDJSON): multiple JSON objects per file, one per line.</p>
       </div>
       <div class="intro-card">
@@ -884,6 +885,11 @@ Bob</span></code></pre>
         </tr>
         <tr>
           <td></td>
+          <td><code>--yaml</code></td>
+          <td>Read input as YAML; <code>.yml</code> and <code>.yaml</code> files are detected automatically</td>
+        </tr>
+        <tr>
+          <td></td>
           <td><code>--color-level</code></td>
           <td>Color each output line by log level (<code>log.level</code>, <code>level</code>, <code>severity</code>, ...)</td>
         </tr>
@@ -1042,6 +1048,40 @@ admins.json: Root</span></code></pre>
 <span class="hl-out">{"level":"ERROR","msg":"connection refused"}
 {"level":"ERROR","msg":"timeout"}</span></code></pre>
         </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">YAML files work with the same jq filters <span class="tag basic">yaml</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label input">deployment.yaml</div>
+          <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/acme/checkout:1.2.3</code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label cmd">Command + Output</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-filter">'.spec.template.spec.containers[].image'</span> deployment.yaml
+
+<span class="hl-out">ghcr.io/acme/checkout:1.2.3</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Force YAML for stdin <span class="tag flags">flag</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-cmd">kubectl get deploy checkout -o yaml</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--yaml</span> \
+  <span class="hl-filter">'.spec.template.spec.containers[].image'</span></code></pre>
       </div>
     </div>
   </section>
@@ -1413,6 +1453,7 @@ Clara</span></code></pre>
 <span class="hl-flag">-n</span>         <span class="hl-com"># null-input (no file needed)</span>
 <span class="hl-flag">-f FILE</span>    <span class="hl-com"># read filter from .jq file</span>
 <span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
+<span class="hl-flag">--yaml</span>     <span class="hl-com"># parse stdin as YAML</span>
 <span class="hl-flag">--color-level</span> <span class="hl-com"># color log lines by level</span>
 <span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span></code></pre>
       </div>

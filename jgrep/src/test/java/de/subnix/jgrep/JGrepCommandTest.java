@@ -96,6 +96,52 @@ class JGrepCommandTest
     }
 
     @Test
+    void yamlFileIsParsedByExtension(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("config.yaml");
+        Files.writeString(file, """
+                service:
+                  name: checkout
+                  replicas: 3
+                """);
+
+        LaunchResult result = launcher.launch(".service.name", file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("checkout");
+    }
+
+    @Test
+    void yamlFlagForcesYamlParsing(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("config.txt");
+        Files.writeString(file, """
+                service:
+                  name: checkout
+                """);
+
+        LaunchResult result = launcher.launch("--yaml", ".service.name", file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("checkout");
+    }
+
+    @Test
+    void recursiveSearchIncludesYamlFiles(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path sub = tempDir.resolve("sub");
+        Files.createDirectory(sub);
+        Files.writeString(tempDir.resolve("a.json"), "{\"x\": 1}");
+        Files.writeString(sub.resolve("b.yaml"), "x: 2\n");
+
+        LaunchResult result = launcher.launch("-r", ".x", tempDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("1");
+        assertThat(result.getOutput()).contains("2");
+    }
+
+    @Test
     void prettyPrint(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
         Path file = tempDir.resolve("test.json");

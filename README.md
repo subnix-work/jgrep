@@ -1,6 +1,6 @@
 # jgrep
 
-`grep` for JSON — filter and search JSON files using [jq](https://jqlang.github.io/jq/) expressions.
+`grep` for JSON and YAML — filter and search structured files using [jq](https://jqlang.github.io/jq/) expressions.
 
 ```bash
 # Extract a field
@@ -47,20 +47,21 @@ java -jar target/quarkus-app/quarkus-run.jar '.name' file.json
 ## Usage
 
 ```
-Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
+Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--yaml] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
 
   FILTER   jq filter expression (e.g. '.name', 'select(.age > 18)', '.items[]').
            Required unless -f is used.
-  FILE     JSON files to search. Reads from stdin if omitted.
+  FILE     JSON or YAML files to search. Reads from stdin if omitted.
 
 Options:
-  -r, --recursive            Recurse into directories (searches *.json files)
+  -r, --recursive            Recurse into directories (searches *.json, *.yaml, *.yml files)
   -l, --files-with-matches   Only print filenames that contain matches
   -c, --count                Print match count per file
   -s, --slurp                Collect all results into a single JSON array
   -n, --null-input           Use null as input (no file needed; evaluate filter directly)
   -f, --from-file=FILE       Read filter expression from a file
       --pretty               Pretty-print JSON output
+      --yaml                 Read input as YAML (also auto-detected for *.yml and *.yaml files)
       --color-level          Color each output line by log level
       --color-level-field    Field used by --color-level (e.g. app.level)
       --no-color             Disable colored output (also respects $NO_COLOR)
@@ -103,6 +104,12 @@ jgrep -f filter.jq events.ndjson
 
 # Combine slurp + pretty-print
 jgrep -s --pretty 'select(.active)' users.ndjson
+
+# Read YAML by extension
+jgrep '.service.name' deployment.yaml
+
+# Force YAML for stdin or non-yaml filenames
+cat deployment.yaml | jgrep --yaml '.spec.template.spec.containers[].image'
 ```
 
 ### Human-readable Kubernetes / ECS logs
