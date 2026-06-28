@@ -39,8 +39,8 @@ import java.util.stream.Stream;
 @TopCommand
 public class JGrepCommand implements Callable<Integer>
 {
-    @Parameters(index = "0", paramLabel = "FILTER", arity = "0..1",
-                description = "jq filter expression. Required unless -f is used.")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "FILTER", hideParamSyntax = true,
+                description = "Required jq filter, except when using a subcommand or -f (e.g. '.name', 'select(.age > 18)')")
     String filterArg;
 
     @Parameters(index = "1..*", paramLabel = "FILE",

@@ -8,8 +8,12 @@ url="https://github.com/subnix-work/jgrep"
 license=('Apache-2.0')
 provides=('jgrep')
 conflicts=('jgrep')
-source=("jgrep::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep")
-sha256sums=('2b837c85476dd4a77dd98ca06a8212fec92056881e90552734cea58e500c544d')
+source=(
+    "jgrep::https://github.com/subnix-work/jgrep/releases/download/v${pkgver}/jgrep"
+)
+sha256sums=(
+    '2b837c85476dd4a77dd98ca06a8212fec92056881e90552734cea58e500c544d'
+)
 
 package() {
     install -Dm755 "${srcdir}/jgrep" "${pkgdir}/usr/bin/jgrep"

@@ -201,6 +201,8 @@ class JGrepCommandTest
         assertThat(result.exitCode()).isEqualTo(0);
         assertThat(result.getOutput()).contains("jgrep [OPTIONS] FILTER [FILE...]");
         assertThat(result.getOutput()).contains("jgrep completion SHELL");
+        assertThat(result.getOutput()).contains("Required jq filter, except when using a subcommand");
+        assertThat(result.getOutput()).doesNotContain("[FILTER]");
         assertThat(result.getOutput()).doesNotContain("[FILTER] [FILE...] [COMMAND]");
     }
 

@@ -49,7 +49,7 @@ Docker native builds produce Linux executables. Use the GitHub release assets fo
 ## Usage
 
 ```
-Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--yaml] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
+Usage: jgrep [-rclsnhV] [-f=FILE] [--pretty] [--yaml] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
 
   FILTER   jq filter expression (e.g. '.name', 'select(.age > 18)', '.items[]').
            Required unless -f is used.
