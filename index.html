@@ -354,6 +354,7 @@
     <span class="hbadge indigo">stdin / files / dirs</span>
     <span class="hbadge green">native binary</span>
     <span class="hbadge orange">Quarkus · Jackson</span>
+    <span class="hbadge green">v1.1.0</span>
   </div>
 </header>
 
@@ -367,6 +368,7 @@
   <a href="#flags">Flags</a>
   <a href="#multifile">Multi-File</a>
   <a href="#advanced">Advanced</a>
+  <a href="#v11">New in 1.1</a>
   <a href="#cheatsheet">Cheatsheet</a>
   <a href="#exit">Exit Codes</a>
 </nav>
@@ -837,6 +839,21 @@ Bob</span></code></pre>
           <td>Print match count per file instead of the values</td>
         </tr>
         <tr>
+          <td><code>-s</code></td>
+          <td><code>--slurp</code></td>
+          <td>Collect <em>all</em> matching results (across all files) into a single JSON array</td>
+        </tr>
+        <tr>
+          <td><code>-n</code></td>
+          <td><code>--null-input</code></td>
+          <td>Use <code>null</code> as input — evaluate the filter without reading any file</td>
+        </tr>
+        <tr>
+          <td><code>-f</code></td>
+          <td><code>--from-file=FILE</code></td>
+          <td>Read the filter expression from a <code>.jq</code> file instead of the command line</td>
+        </tr>
+        <tr>
           <td></td>
           <td><code>--pretty</code></td>
           <td>Pretty-print JSON output with indentation</td>
@@ -844,7 +861,7 @@ Bob</span></code></pre>
         <tr>
           <td></td>
           <td><code>--no-color</code></td>
-          <td>Disable colored filename output</td>
+          <td>Disable syntax-highlighted output (also respects <code>$NO_COLOR</code>)</td>
         </tr>
         <tr>
           <td><code>-h</code></td>
@@ -1116,6 +1133,83 @@ Clara</span></code></pre>
     </div>
   </section>
 
+  <!-- ══════════════════════════════════════════════════════ NEW IN 1.1 -->
+  <section id="v11">
+    <h2><span class="icon">✨</span> New in 1.1.0</h2>
+
+    <div class="example">
+      <div class="example-label"><code>-s</code> / <code>--slurp</code> — collect all results into one array <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-com"># Gather all matching names into a JSON array</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-flag">-s</span> \
+  <span class="hl-filter">'.[] | select(.active) | .name'</span> \
+  users.json
+
+<span class="hl-com"># Aggregate across multiple files</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-flag">-s</span> <span class="hl-filter">'.price'</span> products/*.json \
+  <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">-n</span> <span class="hl-filter">'add / length'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">["Alice","Clara"]</span>
+
+<span class="hl-com"># average price across all files</span>
+<span class="hl-out">24.99</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label"><code>-n</code> / <code>--null-input</code> — evaluate without any file <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-com"># Generate data without any input file</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-flag">-n</span> <span class="hl-filter">'{ts: now | strftime("%Y-%m-%d"), ok: true}'</span>
+
+<span class="hl-com"># Simple arithmetic</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-flag">-n</span> <span class="hl-filter">'[range(5)] | add'</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label output">Output</div>
+          <pre><code><span class="hl-out">{"ts":"2026-06-28","ok":true}</span>
+
+<span class="hl-out">10</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label"><code>-f</code> / <code>--from-file</code> — load filter from a <code>.jq</code> file <span class="tag flags">flag</span></div>
+      <div class="code-pair">
+        <div class="code-pane">
+          <div class="pane-label input">filter.jq</div>
+          <pre><code><span class="hl-filter">.[]
+| select(.level == "ERROR" and (.msg | test("timeout")))
+| {ts: .timestamp, msg: .msg}</span></code></pre>
+        </div>
+        <div class="code-pane">
+          <div class="pane-label cmd">Command</div>
+          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-flag">-f</span> filter.jq logs.ndjson</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="example-label">Syntax highlighting — automatic when writing to a terminal <span class="tag flags">flag</span></div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Keys, strings, numbers, and booleans are colorized automatically</span>
+<span class="hl-cmd">jgrep</span> <span class="hl-filter">'.[] | select(.active)'</span> users.json
+<span class="hl-com"># → keys are cyan, strings green, numbers yellow, booleans/null magenta</span>
+
+<span class="hl-com"># Disable with --no-color or $NO_COLOR env variable</span>
+<span class="hl-cmd">NO_COLOR=1 jgrep</span> <span class="hl-filter">'.name'</span> users.json</code></pre>
+      </div>
+    </div>
+  </section>
+
   <!-- ══════════════════════════════════════════════════════ CHEATSHEET -->
   <section id="cheatsheet">
     <h2><span class="icon">📖</span> Cheatsheet</h2>
@@ -1170,6 +1264,9 @@ Clara</span></code></pre>
         <pre><code><span class="hl-flag">-r</span>         <span class="hl-com"># recursive (directory)</span>
 <span class="hl-flag">-l</span>         <span class="hl-com"># filenames with matches only</span>
 <span class="hl-flag">-c</span>         <span class="hl-com"># count matches</span>
+<span class="hl-flag">-s</span>         <span class="hl-com"># slurp — collect into array</span>
+<span class="hl-flag">-n</span>         <span class="hl-com"># null-input (no file needed)</span>
+<span class="hl-flag">-f FILE</span>    <span class="hl-com"># read filter from .jq file</span>
 <span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
 <span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span></code></pre>
       </div>
