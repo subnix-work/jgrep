@@ -1,0 +1,64 @@
+name: Native Builds
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-native:
+    name: macOS native (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: jgrep
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            artifact: jgrep-macos-arm64
+          - runner: macos-15-intel
+            arch: x64
+            artifact: jgrep-macos-x64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm
+          java-version: "25"
+          native-image-job-reports: true
+
+      - name: Build native executable
+        run: ./mvnw -B -ntp package -Dnative -DskipTests
+
+      - name: Smoke test native executable
+        run: |
+          ./target/jgrep-1.0.0-SNAPSHOT-runner --version
+          printf '%s\n' '{"name":"Alice"}' | ./target/jgrep-1.0.0-SNAPSHOT-runner '.name'
+          printf 'service:\n  name: checkout\n' | ./target/jgrep-1.0.0-SNAPSHOT-runner --yaml '.service.name'
+          ./target/jgrep-1.0.0-SNAPSHOT-runner completion bash | grep -- '--yaml'
+
+      - name: Package native executable
+        run: |
+          mkdir -p target/dist
+          cp target/jgrep-1.0.0-SNAPSHOT-runner target/dist/jgrep
+          chmod +x target/dist/jgrep
+          tar -czf target/dist/${{ matrix.artifact }}.tar.gz -C target/dist jgrep
+
+      - name: Upload native executable
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          path: jgrep/target/dist/${{ matrix.artifact }}.tar.gz
+          if-no-files-found: error
