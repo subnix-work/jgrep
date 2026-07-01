@@ -14,52 +14,49 @@ permissions:
 
 jobs:
   linux-native:
-    name: Linux native — ${{ matrix.module }} (x64)
+    name: Linux native — ${{ matrix.module }}
     runs-on: ubuntu-24.04
     strategy:
       matrix:
         module: [jgrep, ygrep]
-    defaults:
-      run:
-        working-directory: ${{ matrix.module }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
+      - name: Set up Java
+        uses: actions/setup-java@v5
         with:
-          distribution: graalvm
+          distribution: temurin
           java-version: "25"
-          native-image-job-reports: true
+          cache: maven
+          cache-dependency-path: "**/pom.xml"
 
-      - name: Build native executable
-        run: ./mvnw -B -ntp package -Dnative -DskipTests
+      - name: Install shared module
+        run: ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
 
-      - name: Read version
-        id: version
-        run: echo "version=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> "$GITHUB_OUTPUT"
+      - name: Build native (Docker container)
+        working-directory: ${{ matrix.module }}
+        run: ./mvnw -B -ntp package -Pnative -Dquarkus.native.container-build=true -DskipTests
 
-      - name: Smoke test — jgrep
-        if: matrix.module == 'jgrep'
+      - name: Smoke test
         run: |
-          ./target/jgrep-${{ steps.version.outputs.version }}-runner --version
-          printf '%s\n' '{"name":"Alice"}' | ./target/jgrep-${{ steps.version.outputs.version }}-runner '.name'
-          ./target/jgrep-${{ steps.version.outputs.version }}-runner completion bash | grep -- '--from-file'
+          runner=$(ls ${{ matrix.module }}/target/${{ matrix.module }}-*-runner | head -1)
+          "$runner" --version
+          if [ "${{ matrix.module }}" = "jgrep" ]; then
+            printf '%s\n' '{"name":"Alice"}' | "$runner" '.name'
+            "$runner" completion bash | grep -- '--from-file'
+          else
+            printf 'service:\n  name: checkout\n' | "$runner" '.service.name'
+            "$runner" completion bash | grep -- '--from-file'
+          fi
 
-      - name: Smoke test — ygrep
-        if: matrix.module == 'ygrep'
+      - name: Prepare release asset
         run: |
-          ./target/ygrep-${{ steps.version.outputs.version }}-runner --version
-          printf 'service:\n  name: checkout\n' | ./target/ygrep-${{ steps.version.outputs.version }}-runner '.service.name'
-          ./target/ygrep-${{ steps.version.outputs.version }}-runner completion bash | grep -- '--from-file'
-
-      - name: Prepare Linux release asset
-        run: |
-          mkdir -p target/dist
-          cp target/${{ matrix.module }}-${{ steps.version.outputs.version }}-runner target/dist/${{ matrix.module }}
-          chmod +x target/dist/${{ matrix.module }}
+          runner=$(ls ${{ matrix.module }}/target/${{ matrix.module }}-*-runner | head -1)
+          mkdir -p ${{ matrix.module }}/target/dist
+          cp "$runner" ${{ matrix.module }}/target/dist/${{ matrix.module }}
+          chmod +x ${{ matrix.module }}/target/dist/${{ matrix.module }}
 
       - name: Upload Linux native executable
         uses: actions/upload-artifact@v6
@@ -91,9 +88,6 @@ jobs:
             arch: x64
             module: ygrep
             artifact: ygrep-macos-x64
-    defaults:
-      run:
-        working-directory: ${{ matrix.module }}
 
     steps:
       - name: Check out repository
@@ -106,31 +100,31 @@ jobs:
           java-version: "25"
           native-image-job-reports: true
 
-      - name: Build native executable
+      - name: Install shared module
+        run: ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
+
+      - name: Build native (GraalVM)
+        working-directory: ${{ matrix.module }}
         run: ./mvnw -B -ntp package -Dnative -DskipTests
 
-      - name: Read version
-        id: version
-        run: echo "version=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)" >> "$GITHUB_OUTPUT"
-
-      - name: Smoke test — jgrep
-        if: matrix.module == 'jgrep'
+      - name: Smoke test
         run: |
-          ./target/jgrep-${{ steps.version.outputs.version }}-runner --version
-          printf '%s\n' '{"name":"Alice"}' | ./target/jgrep-${{ steps.version.outputs.version }}-runner '.name'
-
-      - name: Smoke test — ygrep
-        if: matrix.module == 'ygrep'
-        run: |
-          ./target/ygrep-${{ steps.version.outputs.version }}-runner --version
-          printf 'service:\n  name: checkout\n' | ./target/ygrep-${{ steps.version.outputs.version }}-runner '.service.name'
+          runner=$(ls ${{ matrix.module }}/target/${{ matrix.module }}-*-runner | head -1)
+          "$runner" --version
+          if [ "${{ matrix.module }}" = "jgrep" ]; then
+            printf '%s\n' '{"name":"Alice"}' | "$runner" '.name'
+          else
+            printf 'service:\n  name: checkout\n' | "$runner" '.service.name'
+          fi
 
       - name: Package native executable
         run: |
-          mkdir -p target/dist
-          cp target/${{ matrix.module }}-${{ steps.version.outputs.version }}-runner target/dist/${{ matrix.module }}
-          chmod +x target/dist/${{ matrix.module }}
-          tar -czf target/dist/${{ matrix.artifact }}.tar.gz -C target/dist ${{ matrix.module }}
+          runner=$(ls ${{ matrix.module }}/target/${{ matrix.module }}-*-runner | head -1)
+          mkdir -p ${{ matrix.module }}/target/dist
+          cp "$runner" ${{ matrix.module }}/target/dist/${{ matrix.module }}
+          chmod +x ${{ matrix.module }}/target/dist/${{ matrix.module }}
+          tar -czf ${{ matrix.module }}/target/dist/${{ matrix.artifact }}.tar.gz \
+            -C ${{ matrix.module }}/target/dist ${{ matrix.module }}
 
       - name: Upload native executable
         uses: actions/upload-artifact@v6
@@ -141,30 +135,28 @@ jobs:
 
   release:
     name: Publish release assets
-    needs:
-      - linux-native
-      - macos-native
+    needs: [linux-native, macos-native]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
 
     steps:
-      - name: Download native artifacts
+      - name: Download Linux binaries
         uses: actions/download-artifact@v8
         with:
           pattern: "*-linux-x64"
           path: release-assets/binaries
           merge-multiple: true
 
-      - name: Download macOS artifacts
+      - name: Download macOS archives
         uses: actions/download-artifact@v8
         with:
           pattern: "*-macos-*"
           path: release-assets/archives
           merge-multiple: true
 
-      - name: Publish GitHub release assets
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
