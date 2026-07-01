@@ -1363,6 +1363,25 @@ Clara</span></code></pre>
 
   </section>
 
+  <!-- ══════════════════════════════════════════════════════ NEW IN 1.2 -->
+  <section id="v12">
+    <h2><span class="icon">✨</span> New in 1.2.0</h2>
+
+    <div class="example">
+      <div class="example-label"><code>ygrep</code> — dedicated tool for YAML files</div>
+      <div class="single-pre">
+        <pre><code><span class="hl-com"># Filter Kubernetes manifests</span>
+<span class="hl-cmd">ygrep</span> <span class="hl-filter">'.spec.replicas'</span> deployment.yaml
+
+<span class="hl-com"># Recurse a directory of YAML files</span>
+<span class="hl-cmd">ygrep</span> <span class="hl-flag">-r</span> <span class="hl-filter">'select(.kind == "Deployment")'</span> k8s/
+
+<span class="hl-com"># jgrep is now JSON-only — use ygrep for YAML</span></code></pre>
+      </div>
+    </div>
+
+  </section>
+
   <!-- ══════════════════════════════════════════════════════ NEW IN 1.1 -->
   <section id="v11">
     <h2><span class="icon">✨</span> New in 1.1.0</h2>
