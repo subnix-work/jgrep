@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>jgrep — grep for JSON and YAML</title>
+  <title>jgrep &amp; ygrep — grep for JSON and YAML</title>
   <style>
     :root {
       --accent:  #22d3ee;
@@ -370,11 +370,14 @@
 <header>
   <div class="logo">
     <span class="j">j</span><span class="gr">gr</span><span class="ep">ep</span>
+    <span style="color:var(--muted);font-size:1.8rem;font-weight:400;letter-spacing:0"> &amp; </span>
+    <span style="color:var(--accent2)">y</span><span class="gr">gr</span><span class="ep">ep</span>
   </div>
-  <p class="tagline">grep for JSON and YAML &mdash; filter with jq syntax, pipe like a pro</p>
+  <p class="tagline">jgrep for JSON &middot; ygrep for YAML &mdash; filter with jq syntax, pipe like a pro</p>
   <div class="header-badges">
     <span class="hbadge cyan">jq 1.6 syntax</span>
-    <span class="hbadge indigo">JSON / YAML</span>
+    <span class="hbadge cyan">JSON</span>
+    <span class="hbadge indigo">YAML</span>
     <span class="hbadge cyan">stdin / files / dirs</span>
     <span class="hbadge green">native binary</span>
     <span class="hbadge orange">Quarkus · Jackson</span>
@@ -408,13 +411,13 @@
     <div class="intro-grid">
       <div class="intro-card">
         <h3>The Concept</h3>
-        <p><strong>jgrep</strong> is grep for JSON and YAML data. Instead of fumbling with raw text patterns, you use <strong>jq filters</strong> to precisely query fields, filter objects, and search arrays.</p>
+        <p><strong>jgrep</strong> is grep for JSON data — use <strong>jq filters</strong> to precisely query fields, filter objects, and search arrays across JSON and NDJSON files. <strong>ygrep</strong> is the same tool for YAML files, automatically discovering <code>.yaml</code> and <code>.yml</code> files when searching directories.</p>
         <p>Perfect for log analysis, API responses, Kubernetes manifests, config files — anything structured.</p>
       </div>
       <div class="intro-card">
         <h3>How it works</h3>
-        <p>jgrep reads JSON or YAML from <strong>stdin</strong> or <strong>files / directories</strong>, applies your jq filter, and outputs only the matches — one match per line.</p>
-        <p>Also supports <strong>Newline-delimited JSON</strong> (NDJSON): multiple JSON objects per file, one per line.</p>
+        <p><strong>jgrep</strong> reads JSON or NDJSON from <strong>stdin</strong> or <strong>files / directories</strong>, applies your jq filter, and outputs only the matches — one match per line. <strong>ygrep</strong> does the same for YAML input.</p>
+        <p>Both tools support the same flags and jq filter syntax — the only difference is the input format they expect.</p>
       </div>
       <div class="intro-card">
         <h3>Why not just jq?</h3>
@@ -852,7 +855,7 @@ Bob</span></code></pre>
         <tr>
           <td><code>-r</code></td>
           <td><code>--recursive</code></td>
-          <td>Recurse into directories and search all <code>.json</code>, <code>.yaml</code>, and <code>.yml</code> files</td>
+          <td>Recurse into directories — jgrep picks up <code>.json</code> files, ygrep picks up <code>.yaml</code> and <code>.yml</code> files</td>
         </tr>
         <tr>
           <td><code>-l</code></td>
@@ -883,11 +886,6 @@ Bob</span></code></pre>
           <td></td>
           <td><code>--pretty</code></td>
           <td>Pretty-print JSON output with indentation</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td><code>--yaml</code></td>
-          <td>Read input as YAML; <code>.yml</code> and <code>.yaml</code> files are detected automatically</td>
         </tr>
         <tr>
           <td></td>
@@ -1079,7 +1077,7 @@ admins.json: Root</span></code></pre>
     </div>
 
     <div class="example">
-      <div class="example-label">YAML files work with the same jq filters <span class="tag basic">yaml</span></div>
+      <div class="example-label">ygrep — same jq filters for YAML files <span class="tag basic">yaml</span></div>
       <div class="code-pair">
         <div class="code-pane">
           <div class="pane-label input">deployment.yaml</div>
@@ -1097,7 +1095,7 @@ spec:
         </div>
         <div class="code-pane">
           <div class="pane-label cmd">Command + Output</div>
-          <pre><code><span class="hl-cmd">jgrep</span> <span class="hl-filter">'.spec.template.spec.containers[].image'</span> deployment.yaml
+          <pre><code><span class="hl-cmd">ygrep</span> <span class="hl-filter">'.spec.template.spec.containers[].image'</span> deployment.yaml
 
 <span class="hl-out">ghcr.io/acme/checkout:1.2.3</span></code></pre>
         </div>
@@ -1105,9 +1103,9 @@ spec:
     </div>
 
     <div class="example">
-      <div class="example-label">Force YAML for stdin <span class="tag flags">flag</span></div>
+      <div class="example-label">ygrep — query YAML from stdin <span class="tag basic">yaml</span></div>
       <div class="single-pre">
-        <pre><code><span class="hl-cmd">kubectl get deploy checkout -o yaml</span> <span class="hl-pipe">|</span> <span class="hl-cmd">jgrep</span> <span class="hl-flag">--yaml</span> \
+        <pre><code><span class="hl-cmd">kubectl get deploy checkout -o yaml</span> <span class="hl-pipe">|</span> <span class="hl-cmd">ygrep</span> \
   <span class="hl-filter">'.spec.template.spec.containers[].image'</span></code></pre>
       </div>
     </div>
@@ -1480,7 +1478,6 @@ Clara</span></code></pre>
 <span class="hl-flag">-n</span>         <span class="hl-com"># null-input (no file needed)</span>
 <span class="hl-flag">-f FILE</span>    <span class="hl-com"># read filter from .jq file</span>
 <span class="hl-flag">--pretty</span>   <span class="hl-com"># pretty-print JSON output</span>
-<span class="hl-flag">--yaml</span>     <span class="hl-com"># parse stdin as YAML</span>
 <span class="hl-flag">--color-level</span> <span class="hl-com"># color log lines by level</span>
 <span class="hl-flag">--no-color</span> <span class="hl-com"># disable color output</span>
 <span class="hl-cmd">completion</span> <span class="hl-filter">bash</span> <span class="hl-com"># print shell completion</span></code></pre>
