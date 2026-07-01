@@ -2,6 +2,7 @@ package de.subnix.jgrep;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.subnix.shared.JsonMatcher;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import net.thisptr.jackson.jq.JsonQuery;
