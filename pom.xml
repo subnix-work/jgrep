@@ -22,8 +22,8 @@
         <quarkus.platform.version>3.37.0</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.6</surefire-plugin.version>
-        <jackson-jq.version>1.0.0</jackson-jq.version>
-        <assertj.version>3.26.3</assertj.version>
+        <jackson-jq.version>1.6.2</jackson-jq.version>
+        <assertj.version>3.27.7</assertj.version>
     </properties>
 
     <dependencyManagement>

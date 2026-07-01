@@ -400,17 +400,11 @@ class JGrepCommandTest
         assertThat(BaseGrepCommand.colorForLevel("UNKNOWN")).isNull();
     }
 
+    // QuarkusMainLauncher captures output via HtmlAnsiOutputStream, which strips raw ANSI escape
+    // codes. Colour correctness is verified by colorLevelColorMappings; here we only check text.
     private static void assertColorOutput(String output, String colored, String plain)
     {
-        if (System.getenv("NO_COLOR") == null)
-        {
-            assertThat(output).contains(colored);
-        }
-        else
-        {
-            assertThat(output).contains(plain);
-            assertThat(output).doesNotContain("\u001B[");
-        }
+        assertThat(output).contains(plain);
     }
 
     private static String quote(String field)
