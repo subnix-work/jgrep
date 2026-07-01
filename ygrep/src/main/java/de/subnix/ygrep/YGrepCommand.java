@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 @Command(
     name = "ygrep",
     mixinStandardHelpOptions = true,
-    version = "1.1.0",
+    version = "1.2.0",
     description = "grep for YAML using jq filters",
     customSynopsis = {
         "ygrep [OPTIONS] FILTER [FILE...]",

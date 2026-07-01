@@ -12,11 +12,14 @@ permissions:
 
 jobs:
   jvm:
-    name: JVM tests and package
+    name: JVM tests — ${{ matrix.module }}
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        module: [jgrep, ygrep]
     defaults:
       run:
-        working-directory: jgrep
+        working-directory: ${{ matrix.module }}
 
     steps:
       - name: Check out repository
@@ -28,7 +31,7 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-          cache-dependency-path: jgrep/pom.xml
+          cache-dependency-path: pom.xml
 
       - name: Verify
         run: ./mvnw -B -ntp verify
@@ -36,6 +39,6 @@ jobs:
       - name: Upload JVM package
         uses: actions/upload-artifact@v6
         with:
-          name: jgrep-jvm-quarkus-app
-          path: jgrep/target/quarkus-app/**
+          name: ${{ matrix.module }}-jvm-quarkus-app
+          path: ${{ matrix.module }}/target/quarkus-app/**
           if-no-files-found: error
