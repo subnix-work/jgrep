@@ -42,10 +42,10 @@ java -jar target/quarkus-app/quarkus-run.jar '.metadata.name' manifest.yaml
 
 # Native Linux binary via Docker (no GraalVM needed locally)
 cd jgrep/jgrep && ./mvnw package -Pnative -Dquarkus.native.container-build=true
-./target/jgrep-1.2.0-runner '.name' file.json
+./target/jgrep-1.3.0-runner '.name' file.json
 
 cd ../ygrep && ./mvnw package -Pnative -Dquarkus.native.container-build=true
-./target/ygrep-1.2.0-runner '.metadata.name' manifest.yaml
+./target/ygrep-1.3.0-runner '.metadata.name' manifest.yaml
 ```
 
 Docker native builds produce Linux executables. Use the GitHub release assets for macOS binaries, or build natively on macOS with GraalVM installed.
@@ -197,6 +197,12 @@ Both `jgrep` and `ygrep` use full [jq 1.6](https://jqlang.github.io/jq/manual/) 
 - `0` — at least one match found
 - `1` — no matches found
 - `2` — error (invalid filter, file not found)
+
+## What's new in 1.3.0
+
+- **Shared module** — common CLI logic extracted into a `shared` Maven module; reduces duplication between `jgrep` and `ygrep`
+- **Dependency upgrades** — `jackson-jq` 1.0.0 → 1.6.2 (bug-fixes, new jq built-ins `fromdateiso8601`, `todateiso8601`, `ceil`); `assertj` 3.26.3 → 3.27.7
+- **Docker native builds** — Linux CI now uses Docker container builds instead of installing GraalVM on the runner
 
 ## What's new in 1.2.0
 

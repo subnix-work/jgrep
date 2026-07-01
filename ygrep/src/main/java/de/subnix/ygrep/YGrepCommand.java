@@ -11,7 +11,7 @@ import java.nio.file.Path;
 @Command(
     name = "ygrep",
     mixinStandardHelpOptions = true,
-    version = "1.2.0",
+    version = "1.3.0",
     description = "grep for YAML using jq filters",
     customSynopsis = {
         "ygrep [OPTIONS] FILTER [FILE...]",

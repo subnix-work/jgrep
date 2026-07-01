@@ -10,7 +10,7 @@ import java.nio.file.Path;
 @Command(
     name = "jgrep",
     mixinStandardHelpOptions = true,
-    version = "1.2.0",
+    version = "1.3.0",
     description = "grep for JSON using jq filters",
     customSynopsis = {
         "jgrep [OPTIONS] FILTER [FILE...]",
