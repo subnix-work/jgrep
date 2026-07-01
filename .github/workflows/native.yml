@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: "**/pom.xml"
 
       - name: Install shared module
-        run: ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
+        run: ./jgrep/mvnw -B -ntp install -N -DskipTests && ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
 
       - name: Build native (Docker container)
         working-directory: ${{ matrix.module }}
@@ -101,7 +101,7 @@ jobs:
           native-image-job-reports: true
 
       - name: Install shared module
-        run: ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
+        run: ./jgrep/mvnw -B -ntp install -N -DskipTests && ./jgrep/mvnw -B -ntp install -pl shared -DskipTests
 
       - name: Build native (GraalVM)
         working-directory: ${{ matrix.module }}
