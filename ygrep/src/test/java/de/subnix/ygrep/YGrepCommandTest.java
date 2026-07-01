@@ -1,4 +1,4 @@
-package de.subnix.jgrep;
+package de.subnix.ygrep;
 
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
@@ -13,13 +13,16 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusMainTest
-class JGrepCommandTest
+class YGrepCommandTest
 {
     @Test
     void extractField(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
-        Files.writeString(file, "{\"name\": \"Alice\", \"age\": 30}");
+        Path file = tempDir.resolve("test.yaml");
+        Files.writeString(file, """
+                name: Alice
+                age: 30
+                """);
 
         LaunchResult result = launcher.launch(".name", file.toString());
         assertThat(result.exitCode()).isEqualTo(0);
@@ -29,10 +32,14 @@ class JGrepCommandTest
     @Test
     void selectMatchingDocuments(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
+        Path file = tempDir.resolve("test.yaml");
         Files.writeString(file, """
-                {"name": "Alice", "age": 30}
-                {"name": "Bob", "age": 15}
+                ---
+                name: Alice
+                age: 30
+                ---
+                name: Bob
+                age: 15
                 """);
 
         LaunchResult result = launcher.launch("select(.age >= 18)", file.toString());
@@ -44,8 +51,8 @@ class JGrepCommandTest
     @Test
     void noMatchReturnsExitCode1(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
-        Files.writeString(file, "{\"name\": \"Alice\"}");
+        Path file = tempDir.resolve("test.yaml");
+        Files.writeString(file, "name: Alice\n");
 
         LaunchResult result = launcher.launch("select(.age > 100)", file.toString());
         assertThat(result.exitCode()).isEqualTo(1);
@@ -54,11 +61,14 @@ class JGrepCommandTest
     @Test
     void countFlag(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
+        Path file = tempDir.resolve("test.yaml");
         Files.writeString(file, """
-                {"active": true}
-                {"active": false}
-                {"active": true}
+                ---
+                active: true
+                ---
+                active: false
+                ---
+                active: true
                 """);
 
         LaunchResult result = launcher.launch("-c", "select(.active == true)", file.toString());
@@ -78,16 +88,16 @@ class JGrepCommandTest
     @Test
     void filesWithMatchesFlag(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path matchFile = tempDir.resolve("match.json");
-        Path noMatchFile = tempDir.resolve("nomatch.json");
-        Files.writeString(matchFile, "{\"active\": true}");
-        Files.writeString(noMatchFile, "{\"active\": false}");
+        Path matchFile = tempDir.resolve("match.yaml");
+        Path noMatchFile = tempDir.resolve("nomatch.yaml");
+        Files.writeString(matchFile, "active: true\n");
+        Files.writeString(noMatchFile, "active: false\n");
 
         LaunchResult result = launcher.launch("-l", "select(.active == true)",
                 matchFile.toString(), noMatchFile.toString());
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("match.json");
-        assertThat(result.getOutput()).doesNotContain("nomatch.json");
+        assertThat(result.getOutput()).contains("match.yaml");
+        assertThat(result.getOutput()).doesNotContain("nomatch.yaml");
     }
 
     @Test
@@ -95,8 +105,8 @@ class JGrepCommandTest
     {
         Path sub = tempDir.resolve("sub");
         Files.createDirectory(sub);
-        Files.writeString(tempDir.resolve("a.json"), "{\"x\": 1}");
-        Files.writeString(sub.resolve("b.json"), "{\"x\": 2}");
+        Files.writeString(tempDir.resolve("a.yaml"), "x: 1\n");
+        Files.writeString(sub.resolve("b.yml"), "x: 2\n");
 
         LaunchResult result = launcher.launch("-r", ".x", tempDir.toString());
         assertThat(result.exitCode()).isEqualTo(0);
@@ -105,10 +115,26 @@ class JGrepCommandTest
     }
 
     @Test
+    void yamlFileIsParsedByExtension(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
+    {
+        Path file = tempDir.resolve("config.yaml");
+        Files.writeString(file, """
+                service:
+                  name: checkout
+                  replicas: 3
+                """);
+
+        LaunchResult result = launcher.launch(".service.name", file.toString());
+
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.getOutput()).contains("checkout");
+    }
+
+    @Test
     void prettyPrint(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
-        Files.writeString(file, "{\"name\": \"Alice\"}");
+        Path file = tempDir.resolve("test.yaml");
+        Files.writeString(file, "name: Alice\n");
 
         LaunchResult result = launcher.launch("--pretty", ".", file.toString());
         assertThat(result.exitCode()).isEqualTo(0);
@@ -125,26 +151,10 @@ class JGrepCommandTest
     @Test
     void missingFileReturnsExitCode2(QuarkusMainLauncher launcher, @TempDir Path tempDir)
     {
-        LaunchResult result = launcher.launch(".name", tempDir.resolve("missing.json").toString());
+        LaunchResult result = launcher.launch(".name", tempDir.resolve("missing.yaml").toString());
 
         assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.getErrorOutput()).contains("missing.json");
-    }
-
-    @Test
-    void parseErrorReturnsExitCode2EvenAfterMatch(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
-    {
-        Path file = tempDir.resolve("broken.ndjson");
-        Files.writeString(file, """
-                {"name": "Alice"}
-                {"name":
-                """);
-
-        LaunchResult result = launcher.launch(".name", file.toString());
-
-        assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.getOutput()).contains("Alice");
-        assertThat(result.getErrorOutput()).contains("parse error");
+        assertThat(result.getErrorOutput()).contains("missing.yaml");
     }
 
     @Test
@@ -162,8 +172,8 @@ class JGrepCommandTest
         LaunchResult result = launcher.launch("--help");
 
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("jgrep [OPTIONS] FILTER [FILE...]");
-        assertThat(result.getOutput()).contains("jgrep completion SHELL");
+        assertThat(result.getOutput()).contains("ygrep [OPTIONS] FILTER [FILE...]");
+        assertThat(result.getOutput()).contains("ygrep completion SHELL");
         assertThat(result.getOutput()).contains("Required jq filter, except when using a subcommand");
         assertThat(result.getOutput()).doesNotContain("[FILTER]");
         assertThat(result.getOutput()).doesNotContain("[FILTER] [FILE...] [COMMAND]");
@@ -175,7 +185,7 @@ class JGrepCommandTest
         LaunchResult result = launcher.launch("completion", "bash");
 
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("complete -F _jgrep_completion jgrep");
+        assertThat(result.getOutput()).contains("complete -F _ygrep_completion ygrep");
         assertThat(result.getOutput()).contains("--from-file");
         assertThat(result.getOutput()).contains("--color-level-field");
         assertThat(result.getOutput()).contains("compgen -W \"completion\"");
@@ -187,7 +197,7 @@ class JGrepCommandTest
         LaunchResult result = launcher.launch("completion", "zsh");
 
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("#compdef jgrep");
+        assertThat(result.getOutput()).contains("#compdef ygrep");
         assertThat(result.getOutput()).contains("--from-file");
     }
 
@@ -197,7 +207,7 @@ class JGrepCommandTest
         LaunchResult result = launcher.launch("completion", "fish");
 
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("complete -c jgrep");
+        assertThat(result.getOutput()).contains("complete -c ygrep");
         assertThat(result.getOutput()).contains("-l from-file");
     }
 
@@ -224,25 +234,28 @@ class JGrepCommandTest
     @Test
     void multipleFilesShowFilename(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path a = tempDir.resolve("a.json");
-        Path b = tempDir.resolve("b.json");
-        Files.writeString(a, "{\"v\": 1}");
-        Files.writeString(b, "{\"v\": 2}");
+        Path a = tempDir.resolve("a.yaml");
+        Path b = tempDir.resolve("b.yaml");
+        Files.writeString(a, "v: 1\n");
+        Files.writeString(b, "v: 2\n");
 
         LaunchResult result = launcher.launch(".v", a.toString(), b.toString());
         assertThat(result.exitCode()).isEqualTo(0);
-        assertThat(result.getOutput()).contains("a.json");
-        assertThat(result.getOutput()).contains("b.json");
+        assertThat(result.getOutput()).contains("a.yaml");
+        assertThat(result.getOutput()).contains("b.yaml");
     }
 
     @Test
     void slurpCollectsAllResultsIntoArray(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
+        Path file = tempDir.resolve("test.yaml");
         Files.writeString(file, """
-                {"v": 1}
-                {"v": 2}
-                {"v": 3}
+                ---
+                v: 1
+                ---
+                v: 2
+                ---
+                v: 3
                 """);
 
         LaunchResult result = launcher.launch("-s", ".v", file.toString());
@@ -253,10 +266,10 @@ class JGrepCommandTest
     @Test
     void slurpAcrossMultipleFiles(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path a = tempDir.resolve("a.json");
-        Path b = tempDir.resolve("b.json");
-        Files.writeString(a, "{\"v\": 1}");
-        Files.writeString(b, "{\"v\": 2}");
+        Path a = tempDir.resolve("a.yaml");
+        Path b = tempDir.resolve("b.yaml");
+        Files.writeString(a, "v: 1\n");
+        Files.writeString(b, "v: 2\n");
 
         LaunchResult result = launcher.launch("-s", ".v", a.toString(), b.toString());
         assertThat(result.exitCode()).isEqualTo(0);
@@ -266,8 +279,8 @@ class JGrepCommandTest
     @Test
     void slurpNoMatchReturnsEmptyArray(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("test.json");
-        Files.writeString(file, "{\"v\": 1}");
+        Path file = tempDir.resolve("test.yaml");
+        Files.writeString(file, "v: 1\n");
 
         LaunchResult result = launcher.launch("-s", "select(.v > 99)", file.toString());
         assertThat(result.exitCode()).isEqualTo(1);
@@ -293,12 +306,12 @@ class JGrepCommandTest
     @Test
     void fromFileReadsFilterExpression(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path jsonFile = tempDir.resolve("data.json");
+        Path yamlFile = tempDir.resolve("data.yaml");
         Path filterFile = tempDir.resolve("filter.jq");
-        Files.writeString(jsonFile, "{\"name\": \"Alice\", \"age\": 30}");
+        Files.writeString(yamlFile, "name: Alice\nage: 30\n");
         Files.writeString(filterFile, ".name");
 
-        LaunchResult result = launcher.launch("-f", filterFile.toString(), jsonFile.toString());
+        LaunchResult result = launcher.launch("-f", filterFile.toString(), yamlFile.toString());
         assertThat(result.exitCode()).isEqualTo(0);
         assertThat(result.getOutput()).contains("Alice");
     }
@@ -306,41 +319,32 @@ class JGrepCommandTest
     @Test
     void fromFileWithMultilineFilter(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path jsonFile = tempDir.resolve("data.json");
+        Path yamlFile = tempDir.resolve("data.yaml");
         Path filterFile = tempDir.resolve("filter.jq");
-        Files.writeString(jsonFile, """
-                {"name": "Alice", "age": 30}
-                {"name": "Bob", "age": 15}
+        Files.writeString(yamlFile, """
+                ---
+                name: Alice
+                age: 30
+                ---
+                name: Bob
+                age: 15
                 """);
         Files.writeString(filterFile, "select(.age >= 18) | .name");
 
-        LaunchResult result = launcher.launch("-f", filterFile.toString(), jsonFile.toString());
+        LaunchResult result = launcher.launch("-f", filterFile.toString(), yamlFile.toString());
         assertThat(result.exitCode()).isEqualTo(0);
         assertThat(result.getOutput()).contains("Alice");
         assertThat(result.getOutput()).doesNotContain("Bob");
     }
 
     @Test
-    void parseErrorReportsMatchButReturnsExitCode2(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
-    {
-        Path file = tempDir.resolve("mixed.json");
-        Files.writeString(file, """
-                {"valid": true}
-                {invalid json}
-                """);
-
-        LaunchResult result = launcher.launch(".", file.toString());
-        assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.getOutput()).contains("true");
-        assertThat(result.getErrorOutput()).contains("parse error");
-    }
-
-    @Test
     void colorLevelColorsProjectedLogLines(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("logs.ndjson");
+        Path file = tempDir.resolve("logs.yaml");
         Files.writeString(file, """
-                {"@timestamp":"2026-06-28T08:16:12Z","log.level":"ERROR","message":"payment declined"}
+                "@timestamp": "2026-06-28T08:16:12Z"
+                log.level: ERROR
+                message: payment declined
                 """);
 
         LaunchResult result = launcher.launch("--color-level",
@@ -353,28 +357,12 @@ class JGrepCommandTest
     }
 
     @Test
-    void colorLevelCanUseCustomNestedField(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
-    {
-        Path file = tempDir.resolve("logs.ndjson");
-        Files.writeString(file, """
-                {"app":{"level":"WARN"},"message":"slow downstream response"}
-                """);
-
-        LaunchResult result = launcher.launch("--color-level", "--color-level-field", "app.level",
-                "\"[\\(.app.level)] \\(.message)\"",
-                file.toString());
-
-        assertThat(result.exitCode()).isEqualTo(0);
-        assertColorOutput(result.getOutput(), "\u001B[33m[WARN] slow downstream response\u001B[0m",
-                "[WARN] slow downstream response");
-    }
-
-    @Test
     void noColorDisablesLogLevelColor(QuarkusMainLauncher launcher, @TempDir Path tempDir) throws IOException
     {
-        Path file = tempDir.resolve("logs.ndjson");
+        Path file = tempDir.resolve("logs.yaml");
         Files.writeString(file, """
-                {"level":"ERROR","message":"payment declined"}
+                level: ERROR
+                message: payment declined
                 """);
 
         LaunchResult result = launcher.launch("--color-level", "--no-color",
@@ -389,13 +377,13 @@ class JGrepCommandTest
     @Test
     void logLevelColorsMapCommonLevels()
     {
-        assertThat(JGrepCommand.colorForLevel("TRACE")).isEqualTo("\u001B[35m");
-        assertThat(JGrepCommand.colorForLevel("DEBUG")).isEqualTo("\u001B[34m");
-        assertThat(JGrepCommand.colorForLevel("INFO")).isEqualTo("\u001B[36m");
-        assertThat(JGrepCommand.colorForLevel("WARN")).isEqualTo("\u001B[33m");
-        assertThat(JGrepCommand.colorForLevel("ERROR")).isEqualTo("\u001B[31m");
-        assertThat(JGrepCommand.colorForLevel("FATAL")).isEqualTo("\u001B[1;31m");
-        assertThat(JGrepCommand.colorForLevel("UNKNOWN")).isNull();
+        assertThat(YGrepCommand.colorForLevel("TRACE")).isEqualTo("\u001B[35m");
+        assertThat(YGrepCommand.colorForLevel("DEBUG")).isEqualTo("\u001B[34m");
+        assertThat(YGrepCommand.colorForLevel("INFO")).isEqualTo("\u001B[36m");
+        assertThat(YGrepCommand.colorForLevel("WARN")).isEqualTo("\u001B[33m");
+        assertThat(YGrepCommand.colorForLevel("ERROR")).isEqualTo("\u001B[31m");
+        assertThat(YGrepCommand.colorForLevel("FATAL")).isEqualTo("\u001B[1;31m");
+        assertThat(YGrepCommand.colorForLevel("UNKNOWN")).isNull();
     }
 
     private static void assertColorOutput(String output, String colored, String plain)

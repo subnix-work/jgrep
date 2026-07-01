@@ -1,9 +1,10 @@
-package de.subnix.jgrep;
+package de.subnix.ygrep;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.inject.Inject;
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 import net.thisptr.jackson.jq.JsonQuery;
@@ -25,25 +26,25 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Command(
-    name = "jgrep",
+    name = "ygrep",
     mixinStandardHelpOptions = true,
     version = "1.1.0",
-    description = "grep for JSON using jq filters",
+    description = "grep for YAML using jq filters",
     customSynopsis = {
-        "jgrep [OPTIONS] FILTER [FILE...]",
-        "jgrep completion SHELL"
+        "ygrep [OPTIONS] FILTER [FILE...]",
+        "ygrep completion SHELL"
     },
     subcommands = CompletionCommand.class
 )
 @TopCommand
-public class JGrepCommand implements Callable<Integer>
+public class YGrepCommand implements Callable<Integer>
 {
     @Parameters(index = "0", arity = "0..1", paramLabel = "FILTER", hideParamSyntax = true,
                 description = "Required jq filter, except when using a subcommand or -f (e.g. '.name', 'select(.age > 18)')")
     String filterArg;
 
     @Parameters(index = "1..*", paramLabel = "FILE",
-                description = "JSON files to search (reads from stdin if omitted)")
+                description = "YAML files to search (reads from stdin if omitted)")
     List<Path> files;
 
     @Option(names = {"-r", "--recursive"}, description = "Recurse into directories")
@@ -90,6 +91,8 @@ public class JGrepCommand implements Callable<Integer>
 
     private boolean hadError;
 
+    private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+
     private static final String CYAN     = "\u001B[36m";
     private static final String GREEN    = "\u001B[32m";
     private static final String BLUE     = "\u001B[34m";
@@ -120,7 +123,7 @@ public class JGrepCommand implements Callable<Integer>
         if (filter == null) return 2;
         if (countOnly && filesOnly)
         {
-            System.err.println("jgrep: --count and --files-with-matches cannot be used together");
+            System.err.println("ygrep: --count and --files-with-matches cannot be used together");
             return 2;
         }
 
@@ -131,7 +134,7 @@ public class JGrepCommand implements Callable<Integer>
         }
         catch (JsonQueryException e)
         {
-            System.err.println("jgrep: invalid filter: " + e.getMessage());
+            System.err.println("ygrep: invalid filter: " + e.getMessage());
             return 2;
         }
 
@@ -165,7 +168,7 @@ public class JGrepCommand implements Callable<Integer>
                     }
                     catch (IOException e)
                     {
-                        System.err.println("jgrep: " + file + ": " + e.getMessage());
+                        System.err.println("ygrep: " + file + ": " + e.getMessage());
                         hadError = true;
                     }
                 }
@@ -192,13 +195,13 @@ public class JGrepCommand implements Callable<Integer>
             }
             catch (IOException e)
             {
-                System.err.println("jgrep: cannot read filter file: " + e.getMessage());
+                System.err.println("ygrep: cannot read filter file: " + e.getMessage());
                 return null;
             }
         }
         if (filterArg == null)
         {
-            System.err.println("jgrep: filter expression required (or use -f to read from file)");
+            System.err.println("ygrep: filter expression required (or use -f to read from file)");
             spec.commandLine().usage(System.err);
             return null;
         }
@@ -232,13 +235,13 @@ public class JGrepCommand implements Callable<Integer>
                     }
                     catch (IOException e)
                     {
-                        System.err.println("jgrep: " + path + ": " + e.getMessage());
+                        System.err.println("ygrep: " + path + ": " + e.getMessage());
                         hadError = true;
                     }
                 }
                 else
                 {
-                    System.err.println("jgrep: " + path + ": Is a directory");
+                    System.err.println("ygrep: " + path + ": Is a directory");
                     hadError = true;
                 }
             }
@@ -259,7 +262,7 @@ public class JGrepCommand implements Callable<Integer>
         }
         catch (JsonQueryException e)
         {
-            System.err.println("jgrep: filter error: " + e.getMessage());
+            System.err.println("ygrep: filter error: " + e.getMessage());
             hadError = true;
             return false;
         }
@@ -290,9 +293,8 @@ public class JGrepCommand implements Callable<Integer>
         int matchCount = 0;
         try
         {
-            ObjectMapper inputMapper = mapper;
-            var parser = inputMapper.getFactory().createParser(is);
-            MappingIterator<JsonNode> iterator = inputMapper.readerFor(JsonNode.class).readValues(parser);
+            var parser = yamlMapper.getFactory().createParser(is);
+            MappingIterator<JsonNode> iterator = yamlMapper.readerFor(JsonNode.class).readValues(parser);
             while (iterator.hasNextValue())
             {
                 JsonNode node;
@@ -306,7 +308,7 @@ public class JGrepCommand implements Callable<Integer>
                     String location = loc != null
                         ? " (line " + loc.getLineNr() + ", col " + loc.getColumnNr() + ")"
                         : "";
-                    System.err.println("jgrep: " + source(filename) + ": parse error" + location
+                    System.err.println("ygrep: " + source(filename) + ": parse error" + location
                         + ": " + e.getOriginalMessage());
                     hadError = true;
                     continue;
@@ -319,7 +321,7 @@ public class JGrepCommand implements Callable<Integer>
                 }
                 catch (JsonQueryException e)
                 {
-                    System.err.println("jgrep: filter error: " + e.getMessage());
+                    System.err.println("ygrep: filter error: " + e.getMessage());
                     hadError = true;
                     continue;
                 }
@@ -343,7 +345,7 @@ public class JGrepCommand implements Callable<Integer>
         }
         catch (IOException e)
         {
-            System.err.println("jgrep: " + source(filename) + ": " + e.getMessage());
+            System.err.println("ygrep: " + source(filename) + ": " + e.getMessage());
             hadError = true;
         }
 
@@ -377,7 +379,7 @@ public class JGrepCommand implements Callable<Integer>
         }
         catch (IOException e)
         {
-            System.err.println("jgrep: error formatting output: " + e.getMessage());
+            System.err.println("ygrep: error formatting output: " + e.getMessage());
         }
     }
 
@@ -457,7 +459,7 @@ public class JGrepCommand implements Callable<Integer>
     private boolean isSupportedFile(Path path)
     {
         String name = path.toString();
-        return name.endsWith(".json");
+        return name.endsWith(".yaml") || name.endsWith(".yml");
     }
 
     private boolean useColor()

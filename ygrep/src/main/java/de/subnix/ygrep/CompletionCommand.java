@@ -1,4 +1,4 @@
-package de.subnix.jgrep;
+package de.subnix.ygrep;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -28,7 +28,7 @@ public class CompletionCommand implements Callable<Integer>
             case "powershell", "pwsh" -> System.out.print(powershell());
             default ->
             {
-                System.err.println("jgrep: unsupported shell: " + shell);
+                System.err.println("ygrep: unsupported shell: " + shell);
                 System.err.println("Supported shells: bash, zsh, fish, powershell");
                 return 2;
             }
@@ -39,8 +39,8 @@ public class CompletionCommand implements Callable<Integer>
     private String bash()
     {
         return """
-                # bash completion for jgrep
-                _jgrep_completion() {
+                # bash completion for ygrep
+                _ygrep_completion() {
                   local cur prev opts shells
                   COMPREPLY=()
                   cur="${COMP_WORDS[COMP_CWORD]}"
@@ -70,16 +70,16 @@ public class CompletionCommand implements Callable<Integer>
 
                   COMPREPLY=( $(compgen -f -- "$cur") )
                 }
-                complete -F _jgrep_completion jgrep
+                complete -F _ygrep_completion ygrep
                 """;
     }
 
     private String zsh()
     {
         return """
-                #compdef jgrep
-                # zsh completion for jgrep
-                _jgrep() {
+                #compdef ygrep
+                # zsh completion for ygrep
+                _ygrep() {
                   local context state line
                   typeset -A opt_args
 
@@ -104,36 +104,36 @@ public class CompletionCommand implements Callable<Integer>
                     '1:filter or command:(completion)' \\
                     '*:files:_files'
                 }
-                _jgrep "$@"
+                _ygrep "$@"
                 """;
     }
 
     private String fish()
     {
         return """
-                # fish completion for jgrep
-                complete -c jgrep -s r -l recursive -d 'Recurse into directories'
-                complete -c jgrep -s l -l files-with-matches -d 'Only print filenames with matches'
-                complete -c jgrep -s c -l count -d 'Print match count per file'
-                complete -c jgrep -s s -l slurp -d 'Collect all results into a single JSON array'
-                complete -c jgrep -s n -l null-input -d 'Use null as input instead of reading files'
-                complete -c jgrep -s f -l from-file -r -d 'Read filter expression from a file'
-                complete -c jgrep -l pretty -d 'Pretty-print JSON output'
-                complete -c jgrep -l no-color -d 'Disable colored output'
-                complete -c jgrep -l color-level -d 'Color each output line by log level'
-                complete -c jgrep -l color-level-field -r -d 'Field used by --color-level'
-                complete -c jgrep -s h -l help -d 'Show help message'
-                complete -c jgrep -s V -l version -d 'Print version'
-                complete -c jgrep -f -n 'not __fish_seen_subcommand_from completion' -a completion -d 'Generate shell completion script'
-                complete -c jgrep -f -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish powershell'
+                # fish completion for ygrep
+                complete -c ygrep -s r -l recursive -d 'Recurse into directories'
+                complete -c ygrep -s l -l files-with-matches -d 'Only print filenames with matches'
+                complete -c ygrep -s c -l count -d 'Print match count per file'
+                complete -c ygrep -s s -l slurp -d 'Collect all results into a single JSON array'
+                complete -c ygrep -s n -l null-input -d 'Use null as input instead of reading files'
+                complete -c ygrep -s f -l from-file -r -d 'Read filter expression from a file'
+                complete -c ygrep -l pretty -d 'Pretty-print JSON output'
+                complete -c ygrep -l no-color -d 'Disable colored output'
+                complete -c ygrep -l color-level -d 'Color each output line by log level'
+                complete -c ygrep -l color-level-field -r -d 'Field used by --color-level'
+                complete -c ygrep -s h -l help -d 'Show help message'
+                complete -c ygrep -s V -l version -d 'Print version'
+                complete -c ygrep -f -n 'not __fish_seen_subcommand_from completion' -a completion -d 'Generate shell completion script'
+                complete -c ygrep -f -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish powershell'
                 """;
     }
 
     private String powershell()
     {
         return """
-                # PowerShell completion for jgrep
-                Register-ArgumentCompleter -Native -CommandName jgrep -ScriptBlock {
+                # PowerShell completion for ygrep
+                Register-ArgumentCompleter -Native -CommandName ygrep -ScriptBlock {
                   param($wordToComplete, $commandAst, $cursorPosition)
 
                   $elements = $commandAst.CommandElements | ForEach-Object { $_.Extent.Text }
