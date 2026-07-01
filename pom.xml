@@ -7,6 +7,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>shared</module>
         <module>jgrep</module>
         <module>ygrep</module>
     </modules>

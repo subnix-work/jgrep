@@ -1,4 +1,4 @@
-package de.subnix.jgrep;
+package de.subnix.shared;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.enterprise.context.ApplicationScoped;
