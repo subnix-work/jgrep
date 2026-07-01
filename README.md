@@ -1,6 +1,6 @@
 # jgrep
 
-`grep` for JSON — filter and search JSON files using [jq](https://jqlang.github.io/jq/) expressions.
+`grep` for JSON and YAML — filter and search structured files using [jq](https://jqlang.github.io/jq/) expressions.
 
 ```bash
 # Extract a field
@@ -27,7 +27,7 @@ curl -s https://api.example.com/users | jgrep 'select(.role == "admin")'
 
 ## Installation
 
-Download the native binary for your platform from the [Releases](https://github.com/subnix-work/jgrep/releases) page — no JVM required.
+Download native binaries from the [Releases](https://github.com/subnix-work/jgrep/releases) page — no JVM required. Linux x64 is available as `jgrep`; macOS x64 and arm64 archives are produced for new version tags by the native build workflow.
 
 **Or build from source:**
 
@@ -35,35 +35,43 @@ Download the native binary for your platform from the [Releases](https://github.
 git clone https://github.com/subnix-work/jgrep.git
 cd jgrep/jgrep
 
-# JVM build (requires Java 21+)
+# JVM build (requires Java 25+)
 ./mvnw package
 java -jar target/quarkus-app/quarkus-run.jar '.name' file.json
 
-# Native binary via Docker (no GraalVM needed locally)
+# Native Linux binary via Docker (no GraalVM needed locally)
 ./mvnw package -Pnative -Dquarkus.native.container-build=true
 ./target/jgrep-1.1.0-runner '.name' file.json
 ```
 
+Docker native builds produce Linux executables. Use the GitHub release assets for macOS binaries, or build natively on macOS with GraalVM installed.
+
 ## Usage
 
 ```
-Usage: jgrep [-clsnhV] [-f=FILE] [--pretty] [--no-color] [FILTER] [FILE...]
+Usage: jgrep [-rclsnhV] [-f=FILE] [--pretty] [--yaml] [--color-level] [--color-level-field FIELD] [--no-color] [FILTER] [FILE...]
 
   FILTER   jq filter expression (e.g. '.name', 'select(.age > 18)', '.items[]').
            Required unless -f is used.
-  FILE     JSON files to search. Reads from stdin if omitted.
+  FILE     JSON or YAML files to search. Reads from stdin if omitted.
 
 Options:
-  -r, --recursive            Recurse into directories (searches *.json files)
+  -r, --recursive            Recurse into directories (searches *.json, *.yaml, *.yml files)
   -l, --files-with-matches   Only print filenames that contain matches
   -c, --count                Print match count per file
   -s, --slurp                Collect all results into a single JSON array
   -n, --null-input           Use null as input (no file needed; evaluate filter directly)
   -f, --from-file=FILE       Read filter expression from a file
       --pretty               Pretty-print JSON output
+      --yaml                 Read input as YAML (also auto-detected for *.yml and *.yaml files)
+      --color-level          Color each output line by log level
+      --color-level-field    Field used by --color-level (e.g. app.level)
       --no-color             Disable colored output (also respects $NO_COLOR)
   -h, --help                 Show this help message
   -V, --version              Print version
+
+Subcommands:
+  completion SHELL           Generate shell completion script
 ```
 
 ## Examples
@@ -101,6 +109,53 @@ jgrep -f filter.jq events.ndjson
 
 # Combine slurp + pretty-print
 jgrep -s --pretty 'select(.active)' users.ndjson
+
+# Read YAML by extension
+jgrep '.service.name' deployment.yaml
+
+# Force YAML for stdin or non-yaml filenames
+cat deployment.yaml | jgrep --yaml '.spec.template.spec.containers[].image'
+```
+
+### Shell completion
+
+Generate completion scripts for common shells:
+
+```bash
+# Bash
+jgrep completion bash > ~/.local/share/bash-completion/completions/jgrep
+
+# Zsh
+jgrep completion zsh > ~/.zsh/completions/_jgrep
+
+# Fish
+jgrep completion fish > ~/.config/fish/completions/jgrep.fish
+
+# PowerShell
+jgrep completion powershell >> $PROFILE
+```
+
+### Human-readable Kubernetes / ECS logs
+
+Kubernetes and ECS logs are often NDJSON: one JSON object per line. You can filter structured fields and then project each match into plain text:
+
+```bash
+# Turn JSON log events into readable text lines
+cat ecs.ndjson | jgrep \
+  '"\(.["@timestamp"]) [\(.["log.level"])] \(.["service.name"])/\(.kubernetes.pod): \(.message)"'
+
+# Filter specific objects, unpack nested tracking fields, and remove JSON braces
+cat ecs.ndjson | jgrep \
+  'select(.["log.level"] == "ERROR" and .kubernetes.namespace == "shop") |
+   "\(.["@timestamp"]) ERROR \(.["service.name"]): \(.message) trace=\(.custom_tracker.trace_id)"'
+
+# Color whole output lines by log level directly in jgrep
+cat ecs.ndjson | jgrep --color-level \
+  '"[\(.["log.level"])] \(.["@timestamp"]) \(.message) trace=\(.custom_tracker.trace_id)"'
+
+# Use a custom level field
+cat app.ndjson | jgrep --color-level --color-level-field app.level \
+  '"[\(.app.level)] \(.message)"'
 ```
 
 ## Filter syntax
@@ -124,8 +179,8 @@ jgrep uses full [jq 1.6](https://jqlang.github.io/jq/manual/) syntax. Supports N
 
 - [Quarkus](https://quarkus.io/) + [Picocli](https://picocli.info/) — CLI framework
 - [jackson-jq](https://github.com/eiiches/jackson-jq) — jq implementation in Java
-- GraalVM Native Image via Docker — single binary, no JVM needed, ~8ms startup
+- GraalVM Native Image — single binary, no JVM needed, ~8ms startup
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache-2.0](LICENSE)

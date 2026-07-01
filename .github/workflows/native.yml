@@ -1,0 +1,138 @@
+name: Native Builds
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-native:
+    name: Linux native (x64)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: jgrep
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm
+          java-version: "25"
+          native-image-job-reports: true
+
+      - name: Build native executable
+        run: ./mvnw -B -ntp package -Dnative -DskipTests
+
+      - name: Smoke test native executable
+        run: |
+          ./target/jgrep-1.1.0-runner --version
+          printf '%s\n' '{"name":"Alice"}' | ./target/jgrep-1.1.0-runner '.name'
+          printf 'service:\n  name: checkout\n' | ./target/jgrep-1.1.0-runner --yaml '.service.name'
+          ./target/jgrep-1.1.0-runner completion bash | grep -- '--yaml'
+
+      - name: Prepare Linux release asset
+        run: |
+          mkdir -p target/dist
+          cp target/jgrep-1.1.0-runner target/dist/jgrep
+          chmod +x target/dist/jgrep
+
+      - name: Upload Linux native executable
+        uses: actions/upload-artifact@v6
+        with:
+          name: jgrep-linux-x64
+          path: jgrep/target/dist/jgrep
+          if-no-files-found: error
+
+  macos-native:
+    name: macOS native (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: jgrep
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            artifact: jgrep-macos-arm64
+          - runner: macos-15-intel
+            arch: x64
+            artifact: jgrep-macos-x64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm
+          java-version: "25"
+          native-image-job-reports: true
+
+      - name: Build native executable
+        run: ./mvnw -B -ntp package -Dnative -DskipTests
+
+      - name: Smoke test native executable
+        run: |
+          ./target/jgrep-1.1.0-runner --version
+          printf '%s\n' '{"name":"Alice"}' | ./target/jgrep-1.1.0-runner '.name'
+          printf 'service:\n  name: checkout\n' | ./target/jgrep-1.1.0-runner --yaml '.service.name'
+          ./target/jgrep-1.1.0-runner completion bash | grep -- '--yaml'
+
+      - name: Package native executable
+        run: |
+          mkdir -p target/dist
+          cp target/jgrep-1.1.0-runner target/dist/jgrep
+          chmod +x target/dist/jgrep
+          tar -czf target/dist/${{ matrix.artifact }}.tar.gz -C target/dist jgrep
+
+      - name: Upload native executable
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          path: jgrep/target/dist/${{ matrix.artifact }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish release assets
+    needs:
+      - linux-native
+      - macos-native
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download native artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: jgrep-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          ls -l release-assets
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" release-assets/* --clobber
+          else
+            gh release create "$TAG_NAME" release-assets/* --title "$TAG_NAME" --generate-notes --verify-tag
+          fi

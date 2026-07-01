@@ -4,12 +4,16 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.inject.Inject;
+import io.quarkus.picocli.runtime.annotations.TopCommand;
 import net.thisptr.jackson.jq.JsonQuery;
 import net.thisptr.jackson.jq.exception.JsonQueryException;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,16 +29,22 @@ import java.util.stream.Stream;
     name = "jgrep",
     mixinStandardHelpOptions = true,
     version = "1.1.0",
-    description = "grep for JSON using jq filters"
+    description = "grep for JSON and YAML using jq filters",
+    customSynopsis = {
+        "jgrep [OPTIONS] FILTER [FILE...]",
+        "jgrep completion SHELL"
+    },
+    subcommands = CompletionCommand.class
 )
+@TopCommand
 public class JGrepCommand implements Callable<Integer>
 {
-    @Parameters(index = "0", paramLabel = "FILTER", arity = "0..1",
-                description = "jq filter expression. Required unless -f is used.")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "FILTER", hideParamSyntax = true,
+                description = "Required jq filter, except when using a subcommand or -f (e.g. '.name', 'select(.age > 18)')")
     String filterArg;
 
     @Parameters(index = "1..*", paramLabel = "FILE",
-                description = "JSON files to search (reads from stdin if omitted)")
+                description = "JSON or YAML files to search (reads from stdin if omitted)")
     List<Path> files;
 
     @Option(names = {"-r", "--recursive"}, description = "Recurse into directories")
@@ -59,8 +69,19 @@ public class JGrepCommand implements Callable<Integer>
     @Option(names = {"--pretty"}, description = "Pretty-print JSON output")
     boolean pretty;
 
+    @Option(names = {"--yaml"}, description = "Read input as YAML (also auto-detected for *.yml and *.yaml files)")
+    boolean yaml;
+
     @Option(names = {"--no-color"}, description = "Disable colored output")
     boolean noColor;
+
+    @Option(names = {"--color-level"},
+            description = "Color each output line by log level (default fields: log.level, level, severity)")
+    boolean colorLevel;
+
+    @Option(names = {"--color-level-field"}, paramLabel = "FIELD",
+            description = "Field used by --color-level")
+    String colorLevelField;
 
     @Inject
     ObjectMapper mapper;
@@ -68,11 +89,21 @@ public class JGrepCommand implements Callable<Integer>
     @Inject
     JsonMatcher matcher;
 
-    private static final String CYAN    = "\u001B[36m";
-    private static final String GREEN   = "\u001B[32m";
-    private static final String YELLOW  = "\u001B[33m";
-    private static final String MAGENTA = "\u001B[35m";
-    private static final String RESET   = "\u001B[0m";
+    @Spec
+    CommandSpec spec;
+
+    private boolean hadError;
+
+    private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+
+    private static final String CYAN     = "\u001B[36m";
+    private static final String GREEN    = "\u001B[32m";
+    private static final String BLUE     = "\u001B[34m";
+    private static final String YELLOW   = "\u001B[33m";
+    private static final String MAGENTA  = "\u001B[35m";
+    private static final String RED      = "\u001B[31m";
+    private static final String BOLD_RED = "\u001B[1;31m";
+    private static final String RESET    = "\u001B[0m";
 
     // Matches JSON keys, string values, numbers, and keywords for syntax highlighting
     private static final Pattern JSON_TOKEN_PATTERN = Pattern.compile(
@@ -82,11 +113,22 @@ public class JGrepCommand implements Callable<Integer>
         "|(?<kw>true|false|null)"
     );
 
+    private static final List<String> DEFAULT_LEVEL_FIELDS = List.of(
+            "log.level", "level", "severity", "severity_text", "severityText"
+    );
+
     @Override
     public Integer call()
     {
+        hadError = false;
+
         String filter = resolveFilter();
         if (filter == null) return 2;
+        if (countOnly && filesOnly)
+        {
+            System.err.println("jgrep: --count and --files-with-matches cannot be used together");
+            return 2;
+        }
 
         JsonQuery query;
         try
@@ -111,9 +153,9 @@ public class JGrepCommand implements Callable<Integer>
             List<Path> allFiles = resolveFiles();
             boolean showFilename = allFiles != null && allFiles.size() > 1;
 
-            if (allFiles == null || allFiles.isEmpty())
+            if (allFiles == null)
             {
-                foundAnyMatch = processStream(System.in, null, query, false, slurpBuffer);
+                foundAnyMatch = processStream(System.in, null, query, false, slurpBuffer, yaml);
             }
             else
             {
@@ -122,7 +164,7 @@ public class JGrepCommand implements Callable<Integer>
                 {
                     try (InputStream is = Files.newInputStream(file))
                     {
-                        if (processStream(is, file.toString(), query, showFilename, slurpBuffer))
+                        if (processStream(is, file.toString(), query, showFilename, slurpBuffer, isYamlFile(file)))
                         {
                             foundAnyMatch = true;
                         }
@@ -130,6 +172,7 @@ public class JGrepCommand implements Callable<Integer>
                     catch (IOException e)
                     {
                         System.err.println("jgrep: " + file + ": " + e.getMessage());
+                        hadError = true;
                     }
                 }
             }
@@ -141,6 +184,7 @@ public class JGrepCommand implements Callable<Integer>
             printSlurpResult(slurpBuffer);
         }
 
+        if (hadError) return 2;
         return foundAnyMatch ? 0 : 1;
     }
 
@@ -161,6 +205,7 @@ public class JGrepCommand implements Callable<Integer>
         if (filterArg == null)
         {
             System.err.println("jgrep: filter expression required (or use -f to read from file)");
+            spec.commandLine().usage(System.err);
             return null;
         }
         return filterArg;
@@ -175,7 +220,7 @@ public class JGrepCommand implements Callable<Integer>
             inputPaths.add(Path.of(filterArg));
         }
         if (files != null) inputPaths.addAll(files);
-        if (inputPaths.isEmpty()) return inputPaths;
+        if (inputPaths.isEmpty()) return null;
 
         List<Path> result = new ArrayList<>();
         for (Path path : inputPaths)
@@ -187,18 +232,20 @@ public class JGrepCommand implements Callable<Integer>
                     try (Stream<Path> walk = Files.walk(path))
                     {
                         walk.filter(Files::isRegularFile)
-                            .filter(p -> p.toString().endsWith(".json"))
+                            .filter(this::isSupportedFile)
                             .sorted()
                             .forEach(result::add);
                     }
                     catch (IOException e)
                     {
                         System.err.println("jgrep: " + path + ": " + e.getMessage());
+                        hadError = true;
                     }
                 }
                 else
                 {
                     System.err.println("jgrep: " + path + ": Is a directory");
+                    hadError = true;
                 }
             }
             else
@@ -219,6 +266,7 @@ public class JGrepCommand implements Callable<Integer>
         catch (JsonQueryException e)
         {
             System.err.println("jgrep: filter error: " + e.getMessage());
+            hadError = true;
             return false;
         }
 
@@ -236,20 +284,21 @@ public class JGrepCommand implements Callable<Integer>
         {
             for (JsonNode result : results)
             {
-                printResult(null, false, result);
+                printResult(null, false, result, null);
             }
         }
         return true;
     }
 
     private boolean processStream(InputStream is, String filename, JsonQuery query,
-                                  boolean showFilename, List<JsonNode> slurpBuffer)
+                                  boolean showFilename, List<JsonNode> slurpBuffer, boolean yamlInput)
     {
         int matchCount = 0;
         try
         {
-            var parser = mapper.getFactory().createParser(is);
-            MappingIterator<JsonNode> iterator = mapper.readerFor(JsonNode.class).readValues(parser);
+            ObjectMapper inputMapper = yamlInput ? yamlMapper : mapper;
+            var parser = inputMapper.getFactory().createParser(is);
+            MappingIterator<JsonNode> iterator = inputMapper.readerFor(JsonNode.class).readValues(parser);
             while (iterator.hasNextValue())
             {
                 JsonNode node;
@@ -265,6 +314,7 @@ public class JGrepCommand implements Callable<Integer>
                         : "";
                     System.err.println("jgrep: " + source(filename) + ": parse error" + location
                         + ": " + e.getOriginalMessage());
+                    hadError = true;
                     continue;
                 }
 
@@ -276,6 +326,7 @@ public class JGrepCommand implements Callable<Integer>
                 catch (JsonQueryException e)
                 {
                     System.err.println("jgrep: filter error: " + e.getMessage());
+                    hadError = true;
                     continue;
                 }
 
@@ -290,7 +341,7 @@ public class JGrepCommand implements Callable<Integer>
                     {
                         for (JsonNode result : results)
                         {
-                            printResult(filename, showFilename, result);
+                            printResult(filename, showFilename, result, node);
                         }
                     }
                 }
@@ -299,6 +350,7 @@ public class JGrepCommand implements Callable<Integer>
         catch (IOException e)
         {
             System.err.println("jgrep: " + source(filename) + ": " + e.getMessage());
+            hadError = true;
         }
 
         if (slurpBuffer == null)
@@ -335,17 +387,25 @@ public class JGrepCommand implements Callable<Integer>
         }
     }
 
-    private void printResult(String filename, boolean showFilename, JsonNode result)
+    private void printResult(String filename, boolean showFilename, JsonNode result, JsonNode source)
     {
         String output = formatResult(result);
         if (useColor() && !result.isTextual()) output = colorizeJson(output);
         if (showFilename && filename != null)
         {
-            System.out.println(colorize(filename + ":", CYAN) + output);
+            String line = filename + ":" + output;
+            if (hasLevelColor(source))
+            {
+                System.out.println(colorizeByLevel(line, source));
+            }
+            else
+            {
+                System.out.println(colorize(filename + ":", CYAN) + output);
+            }
         }
         else
         {
-            System.out.println(output);
+            System.out.println(colorizeByLevel(output, source));
         }
     }
 
@@ -400,6 +460,19 @@ public class JGrepCommand implements Callable<Integer>
         return filename != null ? filename : "stdin";
     }
 
+    private boolean isSupportedFile(Path path)
+    {
+        String name = path.toString();
+        return name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml");
+    }
+
+    private boolean isYamlFile(Path path)
+    {
+        if (yaml) return true;
+        String name = path.toString();
+        return name.endsWith(".yaml") || name.endsWith(".yml");
+    }
+
     private boolean useColor()
     {
         if (noColor) return false;
@@ -410,5 +483,76 @@ public class JGrepCommand implements Callable<Integer>
     private String colorize(String text, String color)
     {
         return useColor() ? color + text + RESET : text;
+    }
+
+    private String colorizeByLevel(String text, JsonNode source)
+    {
+        if (!useLevelColor()) return text;
+
+        String color = colorForLevel(levelValue(source));
+        return color != null ? color + text + RESET : text;
+    }
+
+    private boolean hasLevelColor(JsonNode source)
+    {
+        return useLevelColor() && colorForLevel(levelValue(source)) != null;
+    }
+
+    private boolean useLevelColor()
+    {
+        if (!colorLevel) return false;
+        if (noColor) return false;
+        return System.getenv("NO_COLOR") == null;
+    }
+
+    private String levelValue(JsonNode source)
+    {
+        if (source == null) return null;
+
+        if (colorLevelField != null && !colorLevelField.isBlank())
+        {
+            JsonNode level = fieldValue(source, colorLevelField);
+            return level != null && level.isValueNode() ? level.asText() : null;
+        }
+
+        for (String field : DEFAULT_LEVEL_FIELDS)
+        {
+            JsonNode level = fieldValue(source, field);
+            if (level != null && level.isValueNode())
+            {
+                return level.asText();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode fieldValue(JsonNode node, String field)
+    {
+        JsonNode direct = node.get(field);
+        if (direct != null) return direct;
+
+        JsonNode current = node;
+        for (String part : field.split("\\."))
+        {
+            if (current == null || !current.isObject()) return null;
+            current = current.get(part);
+        }
+        return current;
+    }
+
+    static String colorForLevel(String level)
+    {
+        if (level == null) return null;
+
+        return switch (level.trim().toUpperCase())
+        {
+            case "TRACE" -> MAGENTA;
+            case "DEBUG" -> BLUE;
+            case "INFO", "INFORMATION", "NOTICE" -> CYAN;
+            case "WARN", "WARNING" -> YELLOW;
+            case "ERROR", "ERR" -> RED;
+            case "FATAL", "CRITICAL", "CRIT", "ALERT", "EMERGENCY" -> BOLD_RED;
+            default -> null;
+        };
     }
 }

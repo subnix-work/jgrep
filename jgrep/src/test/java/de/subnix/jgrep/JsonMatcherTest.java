@@ -75,4 +75,72 @@ class JsonMatcherTest
         assertThat(result).hasSize(1);
         assertThat(result.get(0)).isEqualTo(input);
     }
+
+    @Test
+    void ecsLogTextProjection() throws Exception
+    {
+        JsonQuery q = matcher.compile("""
+                "\\(.["@timestamp"]) [\\(.["log.level"])] \\(.["service.name"])/\\(.kubernetes.pod): \\(.message)"
+                """);
+
+        List<JsonNode> result = matcher.apply(q, json("""
+                {
+                  "@timestamp": "2026-06-28T08:16:12Z",
+                  "log.level": "ERROR",
+                  "message": "payment declined",
+                  "service.name": "checkout",
+                  "kubernetes": {"pod": "checkout-7b9"}
+                }
+                """));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).asText())
+                .isEqualTo("2026-06-28T08:16:12Z [ERROR] checkout/checkout-7b9: payment declined");
+    }
+
+    @Test
+    void ecsLogFilterAndNestedDetailsProjection() throws Exception
+    {
+        JsonQuery q = matcher.compile("""
+                select(.["log.level"] == "ERROR" and .kubernetes.namespace == "shop") |
+                "\\(.["@timestamp"]) ERROR \\(.["service.name"]): \\(.message) trace=\\(.custom_tracker.trace_id)"
+                """);
+
+        List<JsonNode> result = matcher.apply(q, json("""
+                {
+                  "@timestamp": "2026-06-28T08:16:12Z",
+                  "log.level": "ERROR",
+                  "message": "payment declined",
+                  "service.name": "checkout",
+                  "kubernetes": {"namespace": "shop"},
+                  "details": {"order_id": "A-1002", "reason": "card_expired"},
+                  "custom_tracker": {"trace_id": "tr-93"}
+                }
+                """));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).asText())
+                .isEqualTo("2026-06-28T08:16:12Z ERROR checkout: payment declined trace=tr-93");
+    }
+
+    @Test
+    void ecsLogProjectionWithFallbackValues() throws Exception
+    {
+        JsonQuery q = matcher.compile("""
+                "\\(.["@timestamp"]) \\(.kubernetes.pod // "-") \\(.message) order=\\(.details.order_id // "-")"
+                """);
+
+        List<JsonNode> result = matcher.apply(q, json("""
+                {
+                  "@timestamp": "2026-06-28T08:16:12Z",
+                  "message": "payment declined",
+                  "kubernetes": {},
+                  "details": {"reason": "card_expired"}
+                }
+                """));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).asText())
+                .isEqualTo("2026-06-28T08:16:12Z - payment declined order=-");
+    }
 }
